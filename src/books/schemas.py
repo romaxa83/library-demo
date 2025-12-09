@@ -20,25 +20,6 @@ class AuthorResponse(AuthorBase):
 
     id: int
 
-
-# ==================== Category ====================
-class CategoryBase(BaseModel):
-    title: str
-
-
-class CategoryCreate(CategoryBase):
-    pass
-
-
-class CategoryUpdate(CategoryBase):
-    pass
-
-
-class CategoryResponse(CategoryBase):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-
 # ==================== Book ====================
 class BookBase(BaseModel):
     title: str
@@ -46,7 +27,6 @@ class BookBase(BaseModel):
     page: int = 0
     is_available: bool = True
     author_id: int
-    category_id: int
 
 
 class BookCreate(BookBase):
@@ -59,7 +39,6 @@ class BookUpdate(BaseModel):
     page: int | None = None
     is_available: bool | None = None
     author_id: int | None = None
-    category_id: int | None = None
 
 
 class BookResponse(BookBase):
@@ -70,6 +49,5 @@ class BookResponse(BookBase):
     updated_at: datetime
 
 class BookDetailResponse(BookResponse):
-    """Книга с вложенными объектами автора и категории"""
+    """Книга с вложенными объектами автора"""
     author: AuthorResponse
-    category: CategoryResponse

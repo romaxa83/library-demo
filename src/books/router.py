@@ -6,6 +6,9 @@ from src.books.schemas import (
     BookUpdate,
     BookResponse,
     BookDetailResponse,
+    AuthorCreate,
+    AuthorUpdate,
+    AuthorResponse
 )
 
 router = APIRouter(
@@ -13,6 +16,75 @@ router = APIRouter(
     tags=["Books"]
 )
 
+# ==================== AUTHORS ====================
+@router.get(
+    "/authors",
+    summary="Получить список авторов",
+    tags=["Authors"],
+    response_model=list[AuthorResponse]
+)
+async def get_authors(
+    service: BookServiceDep,
+    skip: int = 0,
+    limit: int = 10
+):
+    """Получить список авторов"""
+    return service.get_all_authors(skip=skip, limit=limit)
+
+@router.get(
+    "/authors/{author_id}",
+    summary="Получить автора по ID",
+    tags=["Authors"],
+    response_model=AuthorResponse
+)
+async def get_book(
+    author_id: int,
+    service: BookServiceDep
+):
+    """Получить автора по ID"""
+    return service.get_author_by_id(author_id)
+
+@router.post(
+    "/authors",
+    response_model=AuthorResponse,
+    summary="Создать нового автора",
+    tags=["Authors"],
+    status_code=status.HTTP_201_CREATED
+)
+async def create_authors(
+    data: AuthorCreate,
+    service: BookServiceDep
+):
+    """Создать новую книгу"""
+    return service.create_author(data)
+
+@router.patch(
+    "/authors/{author_id}",
+    summary="Обновить автора",
+    tags=["Authors"],
+    response_model=AuthorResponse
+)
+async def update_authors(
+    author_id: int,
+    data: AuthorUpdate,
+    service: BookServiceDep
+):
+    """Обновить книгу"""
+    return service.update_author(author_id, data)
+
+@router.delete(
+    "/authors/{author_id}",
+    summary="Удалить автора",
+    tags=["Authors"],
+    status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_author(
+    author_id: int,
+    service: BookServiceDep
+):
+    """Удалить автора"""
+    service.delete_author(author_id)
+# ==================== BOOKS ====================
 @router.get(
     "/",
     summary="Получить список всех книг",

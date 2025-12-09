@@ -15,11 +15,3 @@ class AuthorNotFoundError(HTTPException):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Author with id {author_id} not found"
         )
-
-
-class CategoryNotFoundError(HTTPException):
-    def __init__(self, category_id: int):
-        super().__init__(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Category with id {category_id} not found"
-        )

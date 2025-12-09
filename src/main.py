@@ -13,7 +13,7 @@ config = Config()
 @app.get("/")
 def info():
 
-    print(config.db.url())
+    print(config.db.url)
     return {
         "app": config.app.name,
         "env": config.app.env,

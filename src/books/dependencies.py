@@ -1,20 +1,10 @@
 from typing import Annotated, Generator
 from fastapi import Depends
 from sqlalchemy.orm import Session
-
+from src.database import SessionLocal
 from src.books.service import BookService
 
-
 # Здесь должна быть ваша настройка базы данных
-# Пример с SQLAlchemy
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
-DATABASE_URL = "sqlite:///./library.db"  # или из конфига
-
-engine = create_engine(DATABASE_URL, echo=True)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 
 def get_session() -> Generator[Session, None, None]:
     """Получить сессию базы данных"""
