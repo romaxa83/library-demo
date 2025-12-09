@@ -2,9 +2,7 @@ from datetime import datetime
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy import String, Text, Integer, ForeignKey, DateTime, func
 
-
-class Base(DeclarativeBase):
-    pass
+from src.database import Base
 
 
 class Author(Base):

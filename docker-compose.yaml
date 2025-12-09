@@ -1,0 +1,28 @@
+services:
+
+  db:
+    image: &db-image postgres:18-alpine
+    container_name: ${APP_NAME}__db
+    hostname: ${APP_NAME}__db
+    platform: linux/arm64
+    ports:
+      - ${DB_PORT}:${DB_PORT}
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/postgresql/data/
+    command: >
+      sh -c "exec docker-entrypoint.sh postgres &&
+      psql -U ${DB_USERNAME} -d ${DB_DATABASE} -c 'ALTER DATABASE ${DB_DATABASE} REFRESH COLLATION VERSION;'"
+    healthcheck:
+      test: pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}
+      interval: 5s
+      timeout: 10s
+      retries: 20
+
+volumes:
+  db_data:
+    driver: local
+    name: ${APP_NAME}_db_data
