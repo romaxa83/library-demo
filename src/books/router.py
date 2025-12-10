@@ -8,20 +8,23 @@ from src.books.schemas import (
     BookDetailResponse,
     AuthorCreate,
     AuthorUpdate,
-    AuthorResponse
+    AuthorShortResponse,
+    AuthorDetailResponse
 )
 
-router = APIRouter(
-    prefix="/books",
-    tags=["Books"]
-)
+# router = APIRouter(
+#     prefix="/books",
+#     tags=["Books"]
+# )
+
+router = APIRouter()
 
 # ==================== AUTHORS ====================
 @router.get(
     "/authors",
     summary="Получить список авторов",
     tags=["Authors"],
-    response_model=list[AuthorResponse]
+    response_model=list[AuthorShortResponse]
 )
 async def get_authors(
     service: BookServiceDep,
@@ -35,9 +38,9 @@ async def get_authors(
     "/authors/{author_id}",
     summary="Получить автора по ID",
     tags=["Authors"],
-    response_model=AuthorResponse
+    response_model=AuthorDetailResponse
 )
-async def get_book(
+async def get_author(
     author_id: int,
     service: BookServiceDep
 ):
@@ -46,7 +49,7 @@ async def get_book(
 
 @router.post(
     "/authors",
-    response_model=AuthorResponse,
+    response_model=AuthorDetailResponse,
     summary="Создать нового автора",
     tags=["Authors"],
     status_code=status.HTTP_201_CREATED
@@ -62,7 +65,7 @@ async def create_authors(
     "/authors/{author_id}",
     summary="Обновить автора",
     tags=["Authors"],
-    response_model=AuthorResponse
+    response_model=AuthorDetailResponse
 )
 async def update_authors(
     author_id: int,
@@ -74,7 +77,7 @@ async def update_authors(
 
 @router.delete(
     "/authors/{author_id}",
-    summary="Удалить автора",
+    summary="Удалить автора (soft delete)",
     tags=["Authors"],
     status_code=status.HTTP_204_NO_CONTENT
 )
@@ -82,11 +85,45 @@ async def delete_author(
     author_id: int,
     service: BookServiceDep
 ):
-    """Удалить автора"""
+    """Удалить автора (soft delete)"""
     service.delete_author(author_id)
+
+@router.patch(
+    "/authors/{author_id}/restore",
+    tags=["Authors"],
+    summary="Восстановить удалённого автора",
+    response_model=AuthorDetailResponse
+)
+async def restore_author(
+    author_id: int,
+    service: BookServiceDep
+):
+    """Восстановить удалённого автора"""
+    return service.restore_author(author_id)
+
+@router.delete(
+    "/authors/{author_id}/force",
+    tags=["Authors"],
+    summary="Полностью удалить автора из БД",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+async def force_delete_author(
+    author_id: int,
+    service: BookServiceDep
+):
+    """
+    Полностью удалить автора из БД.
+    Можно использовать только для уже удалённых авторов (soft-deleted).
+    """
+    service.force_delete_author(author_id)
+
+# ===============================================
 # ==================== BOOKS ====================
+# ===============================================
+
 @router.get(
-    "/",
+    "/books",
+    tags=["Books"],
     summary="Получить список всех книг",
     response_model=list[BookDetailResponse]
 )
@@ -99,7 +136,8 @@ async def get_books(
     return service.get_all(skip=skip, limit=limit)
 
 @router.get(
-    "/{book_id}",
+    "/books/{book_id}",
+    tags=["Books"],
     summary="Получить книгу по ID",
     response_model=BookDetailResponse
 )
@@ -111,7 +149,8 @@ async def get_book(
     return service.get_by_id(book_id)
 
 @router.post(
-    "/",
+    "/books",
+    tags=["Books"],
     response_model=BookResponse,
     summary="Создать новую книгу",
     status_code=status.HTTP_201_CREATED
@@ -124,7 +163,8 @@ async def create_book(
     return service.create(data)
 
 @router.patch(
-    "/{book_id}",
+    "/books/{book_id}",
+    tags=["Books"],
     summary="Обновить книгу",
     response_model=BookResponse
 )
@@ -137,7 +177,8 @@ async def update_book(
     return service.update(book_id, data)
 
 @router.delete(
-    "/{book_id}",
+    "/books/{book_id}",
+    tags=["Books"],
     summary="Удалить книгу",
     status_code=status.HTTP_204_NO_CONTENT
 )

@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict
 # ==================== Author ====================
 class AuthorBase(BaseModel):
     name: str
+    description: str | None = None
 
 
 class AuthorCreate(AuthorBase):
@@ -15,7 +16,15 @@ class AuthorUpdate(AuthorBase):
     pass
 
 
-class AuthorResponse(AuthorBase):
+class AuthorShortResponse(AuthorBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    description: str | None = None  # Исключаем из ответа
+
+
+class AuthorDetailResponse(AuthorBase):
+    """Полная информация об авторе"""
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -50,4 +59,4 @@ class BookResponse(BookBase):
 
 class BookDetailResponse(BookResponse):
     """Книга с вложенными объектами автора"""
-    author: AuthorResponse
+    author: AuthorDetailResponse

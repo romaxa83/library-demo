@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import select
+from datetime import datetime
 
 from src.books.models import Book, Author
 from src.books.schemas import BookCreate, BookUpdate, AuthorCreate, AuthorUpdate
@@ -74,7 +75,12 @@ class BookService:
     # ==================== AUTHORS ====================
     def get_all_authors(self, skip: int = 0, limit: int = 100) -> list[Author]:
         """Получить список всех авторов"""
-        stmt = select(Author).offset(skip).limit(limit)
+        stmt = (
+            select(Author)
+            .where(Author.deleted_at.is_(None))
+            .offset(skip)
+            .limit(limit)
+        )
         return list(self.session.scalars(stmt).all())
 
     def get_author_by_id(self, author_id: int) -> Author:
@@ -84,7 +90,7 @@ class BookService:
             .where(Author.id == author_id)
         )
         model = self.session.scalar(stmt)
-        if not model:
+        if not model or model.deleted_at is not None:
             raise AuthorNotFoundError(author_id)
         return model
 
@@ -110,7 +116,40 @@ class BookService:
         return model
 
     def delete_author(self, author_id: int) -> None:
-        """Удалить автора"""
+        """Удалить автора (soft delete)"""
         model = self.get_author_by_id(author_id)
-        self.session.delete(model)
+        model.deleted_at = datetime.utcnow()
+        self.session.commit()
+
+    def restore_author(self, author_id: int) -> Author:
+        """Восстановить удалённого автора"""
+        stmt = (
+            select(Author)
+            .where(Author.id == author_id)
+            .where(Author.deleted_at.isnot(None))
+        )
+        author = self.session.scalar(stmt)
+        if not author:
+            raise AuthorNotFoundError(author_id)
+
+        author.deleted_at = None
+        self.session.commit()
+        self.session.refresh(author)
+        return author
+
+    def force_delete_author(self, author_id: int) -> None:
+        """Полностью удалить автора из БД (если уже был удалён)"""
+        # Получаем даже удалённого автора
+        stmt = select(Author).where(Author.id == author_id)
+        author = self.session.scalar(stmt)
+
+        if not author:
+            raise AuthorNotFoundError(author_id)
+
+        # Проверяем, был ли он удалён (soft delete)
+        if author.deleted_at is None:
+            raise ValueError(f"Author {author_id} is not soft-deleted. Use delete() for soft delete.")
+
+        # Полностью удаляем из БД
+        self.session.delete(author)
         self.session.commit()
