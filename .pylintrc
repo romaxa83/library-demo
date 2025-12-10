@@ -1,0 +1,20 @@
+
+[MASTER]
+ignore=venv,__pycache__,.git,alembic
+max-line-length=120
+
+[MESSAGES CONTROL]
+disable=
+    C0111,  # missing-docstring
+    C0103,  # invalid-name
+    R0913,  # too-many-arguments
+    R0903,  # too-few-public-methods (для SQLAlchemy моделей)
+    E1102,  # not-callable (для SQLAlchemy func)
+    W0611,  # unused-import
+
+[DESIGN]
+max-args=7
+max-attributes=7
+
+[BASIC]
+good-names=i,j,k,ex,Run,_,db,id

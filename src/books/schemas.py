@@ -1,6 +1,7 @@
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field
 from enum import Enum
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ==================== Author ====================
@@ -26,13 +27,16 @@ class AuthorShortResponse(AuthorBase):
 
 class AuthorDetailResponse(AuthorBase):
     """Полная информация об авторе"""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int
 
+
 # Фильтры ====================
 class DeletedStatus(str, Enum):
     """Статус удаления"""
+
     ACTIVE = "active"  # только не удалённые
     DELETED = "deleted"  # только удалённые
     ALL = "all"  # все
@@ -40,12 +44,14 @@ class DeletedStatus(str, Enum):
 
 class AuthorFilterSchema(BaseModel):
     """Фильтры для авторов"""
+
     skip: int = Field(0, ge=0)
     limit: int = Field(10, ge=1, le=100)
     search: str | None = Field(None, description="Поиск по имени")
-    deleted: DeletedStatus = Field(DeletedStatus.ACTIVE, description="Статус удаления")
+    deleted: str = Field("active", description="Статус удаления")
     sort_by: str = Field("name", description="Поле для сортировки (name, created_at)")
     sort_order: str = Field("asc", description="Порядок сортировки (asc, desc)")
+
 
 # ==================== Book ====================
 class BookBase(BaseModel):
@@ -75,6 +81,8 @@ class BookResponse(BookBase):
     created_at: datetime
     updated_at: datetime
 
+
 class BookDetailResponse(BookResponse):
     """Книга с вложенными объектами автора"""
+
     author: AuthorDetailResponse

@@ -1,6 +1,7 @@
 from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, Text, Integer, ForeignKey, DateTime, func, Boolean
 
 from src.database import Base
 
@@ -23,7 +24,7 @@ class Author(Base):
 
 
 class Book(Base):
-    __tablename__ = 'books'
+    __tablename__ = "books"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -32,15 +33,11 @@ class Book(Base):
     is_available: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Внешние ключи
-    author_id: Mapped[int] = mapped_column(Integer, ForeignKey('authors.id'))
+    author_id: Mapped[int] = mapped_column(Integer, ForeignKey("authors.id"))
 
     # Timestamps
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.now()
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.now(), onupdate=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # Связь "многие к одному" с Author

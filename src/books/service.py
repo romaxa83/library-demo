@@ -1,16 +1,11 @@
-from sqlalchemy.orm import Session, selectinload
-from sqlalchemy import select
 from datetime import datetime
 
-from src.books.models import Book, Author
-from src.books.schemas import (
-    BookCreate,
-    BookUpdate,
-    AuthorCreate,
-    AuthorUpdate,
-    AuthorFilterSchema
-)
-from src.books.exceptions import BookNotFoundError, AuthorNotFoundError
+from sqlalchemy import select
+from sqlalchemy.orm import Session, selectinload
+
+from src.books.exceptions import AuthorNotFoundError, BookNotFoundError
+from src.books.models import Author, Book
+from src.books.schemas import AuthorCreate, AuthorFilterSchema, AuthorUpdate, BookCreate, BookUpdate
 from src.utils.pagination import PaginationHelper
 
 
@@ -20,21 +15,12 @@ class BookService:
 
     def get_all(self, skip: int = 0, limit: int = 100) -> list[Book]:
         """Получить список всех книг"""
-        stmt = (
-            select(Book)
-            .options(selectinload(Book.author))
-            .offset(skip)
-            .limit(limit)
-        )
+        stmt = select(Book).options(selectinload(Book.author)).offset(skip).limit(limit)
         return list(self.session.scalars(stmt).all())
 
     def get_by_id(self, book_id: int) -> Book:
         """Получить книгу по ID"""
-        stmt = (
-            select(Book)
-            .options(selectinload(Book.author))
-            .where(Book.id == book_id)
-        )
+        stmt = select(Book).options(selectinload(Book.author)).where(Book.id == book_id)
         book = self.session.scalar(stmt)
         if not book:
             raise BookNotFoundError(book_id)
@@ -83,13 +69,13 @@ class BookService:
     # ==================== AUTHORS ====================
     def get_all_authors(self, filters: AuthorFilterSchema) -> tuple[list[Author], int]:
         """
-            Получить список авторов с фильтрацией и сортировкой
+        Получить список авторов с фильтрацией и сортировкой
 
-            Args:
-                filters: Объект с параметрами фильтрации
+        Args:
+            filters: Объект с параметрами фильтрации
 
-            Returns:
-                Кортеж (список авторов, всего записей в БД)
+        Returns:
+            Кортеж (список авторов, всего записей в БД)
         """
 
         stmt = select(Author)
@@ -108,8 +94,6 @@ class BookService:
         # ✨ Сортировка
         if filters.sort_by == "name":
             order_column = Author.name
-        elif filters.sort_by == "id":
-            order_column = Author.id
         else:
             order_column = Author.name  # По умолчанию по имени
 
@@ -118,21 +102,13 @@ class BookService:
         else:
             stmt = stmt.order_by(order_column.asc())
 
-        authors, total = PaginationHelper.paginate(
-            self.session,
-            stmt,
-            filters.skip,
-            filters.limit
-        )
+        authors, total = PaginationHelper.paginate(self.session, stmt, filters.skip, filters.limit)
 
         return authors, total
 
     def get_author_by_id(self, author_id: int) -> Author:
         """Получить автора по ID"""
-        stmt = (
-            select(Author)
-            .where(Author.id == author_id)
-        )
+        stmt = select(Author).where(Author.id == author_id)
         model = self.session.scalar(stmt)
         if not model or model.deleted_at is not None:
             raise AuthorNotFoundError(author_id)
@@ -167,11 +143,7 @@ class BookService:
 
     def restore_author(self, author_id: int) -> Author:
         """Восстановить удалённого автора"""
-        stmt = (
-            select(Author)
-            .where(Author.id == author_id)
-            .where(Author.deleted_at.isnot(None))
-        )
+        stmt = select(Author).where(Author.id == author_id).where(Author.deleted_at.isnot(None))
         author = self.session.scalar(stmt)
         if not author:
             raise AuthorNotFoundError(author_id)

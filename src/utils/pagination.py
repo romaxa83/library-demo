@@ -1,17 +1,18 @@
-
 """Утилиты для работы с пагинацией"""
 
-from sqlalchemy import select, func
+from typing import Generic, Tuple, TypeVar
+
+from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import Select
-from typing import TypeVar, Generic, Tuple
-from pydantic import BaseModel, Field, ConfigDict
 
-T = TypeVar('T')  # Generic тип для моделей
+T = TypeVar("T")  # Generic тип для моделей
 
 
 class PaginationMeta(BaseModel):
     """Метаданные пагинации"""
+
     total: int = Field(description="Всего записей в БД")
     count: int = Field(description="Количество записей в текущем ответе")
     per_page: int = Field(description="Записей на странице")
@@ -22,6 +23,7 @@ class PaginationMeta(BaseModel):
 
 class PaginatedResponse(BaseModel, Generic[T]):
     """Пагинированный ответ для любой сущности"""
+
     data: list[T] = Field(description="Данные")
     meta: PaginationMeta = Field(description="Метаданные пагинации")
 
@@ -48,12 +50,7 @@ class PaginationHelper:
     """Помощник для работы с пагинацией"""
 
     @staticmethod
-    def paginate(
-            session: Session,
-            stmt: Select,
-            skip: int = 0,
-            limit: int = 10
-    ) -> Tuple[list, int]:
+    def paginate(session: Session, stmt: Select, skip: int = 0, limit: int = 10) -> Tuple[list, int]:
         """
         Выполнить пагинированный запрос
 
@@ -69,7 +66,7 @@ class PaginationHelper:
         # ✨ Создаём отдельный запрос для подсчёта БЕЗ ORDER BY
         # Используем order_by(None) чтобы очистить сортировку
         count_stmt = stmt.order_by(None).with_only_columns(func.count())
-        total = session.scalar(count_stmt)
+        total: int = session.scalar(count_stmt) or 0
 
         # ✨ Применяем пагинацию к исходному запросу (с сортировкой)
         paginated_stmt = stmt.offset(skip).limit(limit)
@@ -78,11 +75,7 @@ class PaginationHelper:
         return results, total
 
     @staticmethod
-    def build_pagination_meta(
-            total: int,
-            skip: int,
-            limit: int
-    ) -> PaginationMeta:
+    def build_pagination_meta(total: int, skip: int, limit: int) -> PaginationMeta:
         """
         Построить метаданные пагинации
 
@@ -103,16 +96,11 @@ class PaginationHelper:
             per_page=limit,
             current_page=current_page,
             total_pages=total_pages,
-            skip=skip
+            skip=skip,
         )
 
     @staticmethod
-    def build_paginated_response(
-            data: list[T],
-            total: int,
-            skip: int,
-            limit: int
-    ) -> PaginatedResponse[T]:
+    def build_paginated_response(data: list[T], total: int, skip: int, limit: int) -> PaginatedResponse[T]:
         """
         Построить пагинированный ответ
 

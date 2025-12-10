@@ -1,10 +1,13 @@
 from typing import Annotated, Generator
+
 from fastapi import Depends
 from sqlalchemy.orm import Session
-from src.database import SessionLocal
+
 from src.books.service import BookService
+from src.database import SessionLocal
 
 # Здесь должна быть ваша настройка базы данных
+
 
 def get_session() -> Generator[Session, None, None]:
     """Получить сессию базы данных"""
@@ -15,9 +18,7 @@ def get_session() -> Generator[Session, None, None]:
         session.close()
 
 
-def get_book_service(
-    session: Annotated[Session, Depends(get_session)]
-) -> BookService:
+def get_book_service(session: Annotated[Session, Depends(get_session)]) -> BookService:
     """Получить сервис книг"""
     return BookService(session)
 
