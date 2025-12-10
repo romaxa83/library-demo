@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, Query, Body
 
 from src.books.dependencies import BookServiceDep
 from src.books.schemas import (
@@ -9,8 +9,10 @@ from src.books.schemas import (
     AuthorCreate,
     AuthorUpdate,
     AuthorShortResponse,
-    AuthorDetailResponse
+    AuthorDetailResponse,
+    AuthorFilterSchema
 )
+from src.utils.pagination import PaginatedResponse, PaginationHelper
 
 # router = APIRouter(
 #     prefix="/books",
@@ -24,15 +26,34 @@ router = APIRouter()
     "/authors",
     summary="Получить список авторов",
     tags=["Authors"],
-    response_model=list[AuthorShortResponse]
+    response_model=PaginatedResponse[AuthorShortResponse]
 )
 async def get_authors(
     service: BookServiceDep,
-    skip: int = 0,
-    limit: int = 10
+    skip: int = Query(0, ge=0, description="Количество пропускаемых записей"),
+    limit: int = Query(10, ge=1, le=100, description="Максимальное количество записей"),
+    search: str | None = Query(None, description="Поиск по имени автора"),
+    deleted: str = Query("active", description="Фильтр по статусу удаления (active, deleted, all)"),
+    sort_by: str = Query("name", description="Поле для сортировки (name)"),
+    sort_order: str = Query("asc", description="Порядок сортировки (asc, desc)")
 ):
-    """Получить список авторов"""
-    return service.get_all_authors(skip=skip, limit=limit)
+    filters = AuthorFilterSchema(
+        skip=skip,
+        limit=limit,
+        search=search,
+        deleted=deleted,
+        sort_by=sort_by,
+        sort_order=sort_order
+    )
+
+    authors, total = service.get_all_authors(filters=filters)
+
+    return PaginationHelper.build_paginated_response(
+        data=authors,
+        total=total,
+        skip=skip,
+        limit=limit
+    )
 
 @router.get(
     "/authors/{author_id}",

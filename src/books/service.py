@@ -3,8 +3,16 @@ from sqlalchemy import select
 from datetime import datetime
 
 from src.books.models import Book, Author
-from src.books.schemas import BookCreate, BookUpdate, AuthorCreate, AuthorUpdate
+from src.books.schemas import (
+    BookCreate,
+    BookUpdate,
+    AuthorCreate,
+    AuthorUpdate,
+    AuthorFilterSchema
+)
 from src.books.exceptions import BookNotFoundError, AuthorNotFoundError
+from src.utils.pagination import PaginationHelper
+
 
 class BookService:
     def __init__(self, session: Session):
@@ -73,15 +81,51 @@ class BookService:
             raise AuthorNotFoundError(author_id)
 
     # ==================== AUTHORS ====================
-    def get_all_authors(self, skip: int = 0, limit: int = 100) -> list[Author]:
-        """Получить список всех авторов"""
-        stmt = (
-            select(Author)
-            .where(Author.deleted_at.is_(None))
-            .offset(skip)
-            .limit(limit)
+    def get_all_authors(self, filters: AuthorFilterSchema) -> tuple[list[Author], int]:
+        """
+            Получить список авторов с фильтрацией и сортировкой
+
+            Args:
+                filters: Объект с параметрами фильтрации
+
+            Returns:
+                Кортеж (список авторов, всего записей в БД)
+        """
+
+        stmt = select(Author)
+
+        # ✨ Фильтр по статусу удаления
+        if filters.deleted == "active":
+            stmt = stmt.where(Author.deleted_at.is_(None))
+        elif filters.deleted == "deleted":
+            stmt = stmt.where(Author.deleted_at.isnot(None))
+        # elif filters.deleted == "all" — не добавляем условие, получаем всех
+
+        # ✨ Поиск по имени
+        if filters.search:
+            stmt = stmt.where(Author.name.ilike(f"%{filters.search}%"))
+
+        # ✨ Сортировка
+        if filters.sort_by == "name":
+            order_column = Author.name
+        elif filters.sort_by == "id":
+            order_column = Author.id
+        else:
+            order_column = Author.name  # По умолчанию по имени
+
+        if filters.sort_order.lower() == "desc":
+            stmt = stmt.order_by(order_column.desc())
+        else:
+            stmt = stmt.order_by(order_column.asc())
+
+        authors, total = PaginationHelper.paginate(
+            self.session,
+            stmt,
+            filters.skip,
+            filters.limit
         )
-        return list(self.session.scalars(stmt).all())
+
+        return authors, total
 
     def get_author_by_id(self, author_id: int) -> Author:
         """Получить автора по ID"""
