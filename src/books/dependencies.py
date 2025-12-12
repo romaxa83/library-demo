@@ -4,14 +4,16 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from src.books.service import BookService
-from src.database import SessionLocal
-
-# Здесь должна быть ваша настройка базы данных
+from src import database
 
 
 def get_session() -> Generator[Session, None, None]:
     """Получить сессию базы данных"""
-    session = SessionLocal()
+    # SessionLocal будет инициализирован в init_db()
+    if database.SessionLocal is None:
+        database.init_db()
+
+    session = database.SessionLocal()
     try:
         yield session
     finally:

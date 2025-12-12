@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 # ==================== Author ====================
 class AuthorBase(BaseModel):
-    name: str
+    name: str = Field(min_length=1)
     description: str | None = None
 
 

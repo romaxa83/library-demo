@@ -138,7 +138,7 @@ class BookService:
     def delete_author(self, author_id: int) -> None:
         """Удалить автора (soft delete)"""
         model = self.get_author_by_id(author_id)
-        model.deleted_at = datetime.utcnow()
+        model.deleted_at = datetime.now()
         self.session.commit()
 
     def restore_author(self, author_id: int) -> Author:

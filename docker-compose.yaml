@@ -22,6 +22,23 @@ services:
       timeout: 10s
       retries: 20
 
+  db_test:
+    image: *db-image
+    container_name: ${APP_NAME}__db_test
+    hostname: ${APP_NAME}__db_test
+    platform: linux/arm64
+    restart: unless-stopped
+    # розширюємо кількість одночасних підключень до Postgres БД та кількість транзакцій. Важливо для комфортного запуску паралельних тестів.
+    command: postgres -c 'max_connections=250' -c 'max_locks_per_transaction=128'
+    ports:
+      - 5433:5432
+    environment:
+      POSTGRES_DB: db_test
+      POSTGRES_USER: ${TEST_DB_USERNAME}
+      POSTGRES_PASSWORD: ${TEST_DB_PASSWORD}
+    volumes:
+      - /var/lib/postgresql/data
+
 volumes:
   db_data:
     driver: local
