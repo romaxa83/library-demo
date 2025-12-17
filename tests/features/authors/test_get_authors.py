@@ -44,7 +44,7 @@ class TestGetAuthors:
 
         create_authors(count=3)
 
-        response = client.get("/authors?skip=0&limit=2&skip=2")
+        response = client.get("/authors?skip=2&limit=2")
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
 

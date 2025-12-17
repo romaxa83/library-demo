@@ -12,7 +12,7 @@ class TestSoftDeleteAuthor:
         response = client.delete(f"/authors/{author.id}")
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
-        # Проверяем, что автор помечен как удалённый но запись осталась
+        # Проверяем, что автор помечен как удалённый, но запись осталась
         response = client.get("/authors?deleted=deleted")
         assert response.status_code == status.HTTP_200_OK
         data = response.json()

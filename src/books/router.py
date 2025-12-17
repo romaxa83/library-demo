@@ -11,6 +11,7 @@ from src.books.schemas import (
     BookDetailResponse,
     BookResponse,
     BookUpdate,
+    BookFilterSchema
 )
 from src.utils.pagination import PaginatedResponse, PaginationHelper
 
@@ -119,13 +120,42 @@ async def force_delete_author(author_id: int, service: BookServiceDep):
 # ===============================================
 
 
-@router.get("/books", tags=["Books"], summary="Получить список всех книг", response_model=list[BookDetailResponse])
-async def get_books(service: BookServiceDep, skip: int = 0, limit: int = 10):
+@router.get(
+    "/books",
+    tags=["Books"],
+    summary="Получить список всех книг",
+    response_model=PaginatedResponse[BookDetailResponse],
+)
+async def get_books(
+    service: BookServiceDep,
+    skip: int = Query(0, ge=0, description="Количество пропускаемых записей"),
+    limit: int = Query(10, ge=1, le=100, description="Максимальное количество записей"),
+    search: str | None = Query(None, description="Поиск по названию"),
+    deleted: str = Query("active", description="Фильтр по статусу удаления (active, deleted, all)"),
+    sort_by: str = Query("name", description="Поле для сортировки (title, page, is_available, created_at)"),
+    sort_order: str = Query("asc", description="Порядок сортировки (asc, desc)"),):
     """Получить список всех книг"""
-    return service.get_all(skip=skip, limit=limit)
+
+    filters = BookFilterSchema(
+        skip=skip,
+        limit=limit,
+        search=search,
+        deleted=deleted,
+        sort_by=sort_by,
+        sort_order=sort_order
+    )
+
+    recs, total = service.get_all_books(filters=filters)
+
+    return PaginationHelper.build_paginated_response(data=recs, total=total, skip=skip, limit=limit)
 
 
-@router.get("/books/{book_id}", tags=["Books"], summary="Получить книгу по ID", response_model=BookDetailResponse)
+@router.get(
+    "/books/{book_id}",
+    tags=["Books"],
+    summary="Получить книгу по ID",
+    response_model=BookDetailResponse
+)
 async def get_book(book_id: int, service: BookServiceDep):
     """Получить книгу по ID"""
     return service.get_by_id(book_id)

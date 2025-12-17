@@ -24,6 +24,7 @@ def book_factory(db_session, fake, author_factory):
             page=kwargs.get("page") or fake.random_int(min=100, max=500),
             is_available=kwargs.get("is_available", True),
             author_id=author.id,
+            deleted_at=kwargs.get("deleted_at")
         )
         db_session.add(book)
         db_session.commit()

@@ -49,18 +49,28 @@ class AuthorFilterSchema(BaseModel):
     limit: int = Field(10, ge=1, le=100)
     search: str | None = Field(None, description="Поиск по имени")
     deleted: str = Field("active", description="Статус удаления")
-    sort_by: str = Field("name", description="Поле для сортировки (name, created_at)")
+    sort_by: str = Field("name", description="Поле для сортировки (name)")
     sort_order: str = Field("asc", description="Порядок сортировки (asc, desc)")
 
 
 # ==================== Book ====================
 class BookBase(BaseModel):
-    title: str
+    title: str = Field(min_length=1)
     description: str | None = None
     page: int = 0
     is_available: bool = True
     author_id: int
 
+class BookFilterSchema(BaseModel):
+    """Фильтры для книг"""
+
+    skip: int = Field(0, ge=0)
+    limit: int = Field(10, ge=1, le=100)
+    search: str | None = Field(None, description="Поиск по названию")
+    author_id: int | None = Field(0, description="Поиск по id автора")
+    deleted: str = Field("active", description="Статус удаления")
+    sort_by: str = Field("title", description="Поле для сортировки (name, page, is_available, created_at)")
+    sort_order: str = Field("asc", description="Порядок сортировки (asc, desc)")
 
 class BookCreate(BookBase):
     pass

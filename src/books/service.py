@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from src.books.exceptions import AuthorNotFoundError, BookNotFoundError
 from src.books.models import Author, Book
-from src.books.schemas import AuthorCreate, AuthorFilterSchema, AuthorUpdate, BookCreate, BookUpdate
+from src.books.schemas import AuthorCreate, AuthorFilterSchema, AuthorUpdate, BookCreate, BookUpdate, BookFilterSchema
 from src.utils.pagination import PaginationHelper
 
 
@@ -13,22 +13,58 @@ class BookService:
     def __init__(self, session: Session):
         self.session = session
 
-    def get_all(self, skip: int = 0, limit: int = 100) -> list[Book]:
-        """Получить список всех книг"""
-        stmt = select(Book).options(selectinload(Book.author)).offset(skip).limit(limit)
-        return list(self.session.scalars(stmt).all())
+    def get_all_books(self, filters: BookFilterSchema) -> tuple[list[Book], int]:
+        """
+        Получить список книг с фильтрацией и сортировкой
+
+        Args:
+            filters: Объект с параметрами фильтрации
+
+        Returns:
+            Кортеж (список авторов, всего записей в БД)
+        """
+
+        stmt = select(Book)
+
+        # ✨ Фильтр по статусу удаления
+        if filters.deleted == "active":
+            stmt = stmt.where(Book.deleted_at.is_(None))
+        elif filters.deleted == "deleted":
+            stmt = stmt.where(Book.deleted_at.isnot(None))
+            # elif filters.deleted == "all" — не добавляем условие, получаем всех
+
+        # ✨ Поиск по имени
+        if filters.search:
+            stmt = stmt.where(Book.title.ilike(f"%{filters.search}%"))
+
+        # ✨ Сортировка
+        if filters.sort_by == "page":
+            order_column = Book.page
+        else:
+            order_column = Book.title  # По умолчанию по имени
+
+        if filters.sort_order.lower() == "desc":
+            stmt = stmt.order_by(order_column.desc())
+        else:
+            stmt = stmt.order_by(order_column.asc())
+
+        recs, total = PaginationHelper.paginate(self.session, stmt, filters.skip, filters.limit)
+
+        return recs, total
 
     def get_by_id(self, book_id: int) -> Book:
         """Получить книгу по ID"""
         stmt = select(Book).options(selectinload(Book.author)).where(Book.id == book_id)
-        book = self.session.scalar(stmt)
-        if not book:
+        model = self.session.scalar(stmt)
+
+        if not model or model.deleted_at is not None:
             raise BookNotFoundError(book_id)
-        return book
+
+        return model
 
     def create(self, data: BookCreate) -> Book:
         """Создать новую книгу"""
-        # Проверяем существование автора и категории
+        # Проверяем существование автора
         self._validate_author_exists(data.author_id)
 
         book = Book(**data.model_dump())
@@ -39,7 +75,7 @@ class BookService:
 
     def update(self, book_id: int, data: BookUpdate) -> Book:
         """Обновить книгу"""
-        book = self.get_by_id(book_id)
+        model = self.get_by_id(book_id)
 
         update_data = data.model_dump(exclude_unset=True)
 
@@ -48,22 +84,23 @@ class BookService:
             self._validate_author_exists(update_data["author_id"])
 
         for field, value in update_data.items():
-            setattr(book, field, value)
+            setattr(model, field, value)
 
         self.session.commit()
-        self.session.refresh(book)
-        return book
+        self.session.refresh(model)
+        return model
 
     def delete(self, book_id: int) -> None:
-        """Удалить книгу"""
-        book = self.get_by_id(book_id)
-        self.session.delete(book)
+        """Удалить книгу (soft delete)"""
+        model = self.get_by_id(book_id)
+        model.deleted_at = datetime.now()
         self.session.commit()
 
     def _validate_author_exists(self, author_id: int) -> None:
         """Проверить существование автора"""
-        author = self.session.get(Author, author_id)
-        if not author:
+        # todo оптимизировать (deleted_at - проверять на уровни бд)
+        author = (self.session.get(Author, author_id))
+        if not author or author.deleted_at is not None:
             raise AuthorNotFoundError(author_id)
 
     # ==================== AUTHORS ====================
