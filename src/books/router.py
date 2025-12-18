@@ -131,6 +131,8 @@ async def get_books(
     skip: int = Query(0, ge=0, description="Количество пропускаемых записей"),
     limit: int = Query(10, ge=1, le=100, description="Максимальное количество записей"),
     search: str | None = Query(None, description="Поиск по названию"),
+    author_id: int | None = Query(0, description="Поиск по автору"),
+    is_available: bool | None = Query(None, description="Поиск книги по наличию"),
     deleted: str = Query("active", description="Фильтр по статусу удаления (active, deleted, all)"),
     sort_by: str = Query("name", description="Поле для сортировки (title, page, is_available, created_at)"),
     sort_order: str = Query("asc", description="Порядок сортировки (asc, desc)"),):
@@ -140,6 +142,8 @@ async def get_books(
         skip=skip,
         limit=limit,
         search=search,
+        author_id=author_id,
+        is_available=is_available,
         deleted=deleted,
         sort_by=sort_by,
         sort_order=sort_order

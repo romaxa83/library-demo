@@ -1,7 +1,5 @@
-from time import sleep
 from datetime import datetime
 from fastapi import status
-import json
 
 class TestUpdateBook:
     """Тесты для редактирования книги"""
@@ -25,15 +23,11 @@ class TestUpdateBook:
             "is_available": True
         }
 
-        # sleep(1)
-
         response = client.patch(f"/books/{model.id}", json=_update_data)
         assert response.status_code == status.HTTP_200_OK
 
         data = response.json()
-        # print(json.dumps(data, ensure_ascii=False, indent=2))
-        # print('======')
-        # print(old_updated_at)
+
         assert data["id"] == model.id
         assert data["title"] == _update_data["title"]
         assert data["description"] == _update_data["description"]

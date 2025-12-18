@@ -9,6 +9,13 @@ class AuthorBase(BaseModel):
     name: str = Field(min_length=1)
     description: str | None = None
 
+class BookBase(BaseModel):
+    title: str = Field(min_length=1)
+    description: str | None = None
+    page: int = 0
+    is_available: bool = True
+    author_id: int
+
 
 class AuthorCreate(AuthorBase):
     pass
@@ -32,6 +39,8 @@ class AuthorDetailResponse(AuthorBase):
 
     id: int
 
+    books: list[BookBase]
+
 
 # Фильтры ====================
 class DeletedStatus(str, Enum):
@@ -54,12 +63,6 @@ class AuthorFilterSchema(BaseModel):
 
 
 # ==================== Book ====================
-class BookBase(BaseModel):
-    title: str = Field(min_length=1)
-    description: str | None = None
-    page: int = 0
-    is_available: bool = True
-    author_id: int
 
 class BookFilterSchema(BaseModel):
     """Фильтры для книг"""
@@ -68,6 +71,7 @@ class BookFilterSchema(BaseModel):
     limit: int = Field(10, ge=1, le=100)
     search: str | None = Field(None, description="Поиск по названию")
     author_id: int | None = Field(0, description="Поиск по id автора")
+    is_available: int | None = Field(None, description="Поиск по наличию")
     deleted: str = Field("active", description="Статус удаления")
     sort_by: str = Field("title", description="Поле для сортировки (name, page, is_available, created_at)")
     sort_order: str = Field("asc", description="Порядок сортировки (asc, desc)")

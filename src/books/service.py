@@ -7,6 +7,7 @@ from src.books.exceptions import AuthorNotFoundError, BookNotFoundError
 from src.books.models import Author, Book
 from src.books.schemas import AuthorCreate, AuthorFilterSchema, AuthorUpdate, BookCreate, BookUpdate, BookFilterSchema
 from src.utils.pagination import PaginationHelper
+from tests.fixtures import author
 
 
 class BookService:
@@ -36,6 +37,16 @@ class BookService:
         # ✨ Поиск по имени
         if filters.search:
             stmt = stmt.where(Book.title.ilike(f"%{filters.search}%"))
+
+        # ✨ Поиск по автору
+        if filters.author_id:
+            stmt = stmt.where(Book.author_id == filters.author_id)
+
+        # ✨ Поиск по наличию
+        if filters.is_available == 1:
+            stmt = stmt.where(Book.is_available == True)
+        elif filters.is_available == 0:
+            stmt = stmt.where(Book.is_available == False)
 
         # ✨ Сортировка
         if filters.sort_by == "page":
@@ -67,11 +78,12 @@ class BookService:
         # Проверяем существование автора
         self._validate_author_exists(data.author_id)
 
-        book = Book(**data.model_dump())
-        self.session.add(book)
+        model = Book(**data.model_dump())
+        model.updated_at = datetime.now()
+        self.session.add(model)
         self.session.commit()
-        self.session.refresh(book)
-        return book
+        self.session.refresh(model)
+        return model
 
     def update(self, book_id: int, data: BookUpdate) -> Book:
         """Обновить книгу"""

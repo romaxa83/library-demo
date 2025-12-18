@@ -39,3 +39,18 @@ class TestGetAuthor:
         assert data["id"] == author.id
         assert data["name"] == author.name
         assert data["description"] == author.description
+        assert len(data["books"]) == 0
+
+    def test_get_author_with_book(self, client, create_author, create_book):
+        """Получить автора с книгами"""
+
+        author = create_author()
+        create_book(author=author)
+        create_book(author=author)
+
+        response = client.get(f"/authors/{author.id}")
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+
+        assert data["id"] == author.id
+        assert len(data["books"]) == 2
