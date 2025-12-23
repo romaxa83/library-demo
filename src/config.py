@@ -1,5 +1,7 @@
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+BASE_DIR = Path(__file__).parent
 
 class AppConfig(BaseSettings):
     model_config = SettingsConfigDict(
@@ -20,6 +22,16 @@ class LoggerLoguruConfig(BaseSettings):
     retention: str = "1 month" # как долго хранятся старые логи
     compression: str = "zip"   # архивирование старых логов
     serialize: bool = True     # форматировать ли в JSON-формат
+
+class AuthJWTConfig(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env", env_prefix="AUTH_JWT_", extra="ignore"
+    )
+    # значение по умолчанию
+    private_key_path: Path = BASE_DIR / "jwt-private.pem" # путь к приватному ключу
+    public_key_path: Path = BASE_DIR / "jwt-public.pem"   # путь к публичному ключу
+    algorithm: str = "RS256"   # алгоритм шифрования
+
 
 class DatabaseConfig(BaseSettings):
     model_config = SettingsConfigDict(
@@ -57,3 +69,4 @@ class Config(BaseSettings):
     db: DatabaseConfig = DatabaseConfig()
     test_db: TestDatabaseConfig = TestDatabaseConfig()
     logger: LoggerLoguruConfig = LoggerLoguruConfig()
+    auth: AuthJWTConfig = AuthJWTConfig()

@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Query, status
-from loguru import logger
 
 from src.books.dependencies import BookServiceDep
 from src.books.schemas import (
