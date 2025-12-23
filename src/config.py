@@ -9,6 +9,17 @@ class AppConfig(BaseSettings):
     name: str = "App"
     env: str = "local"
 
+class LoggerLoguruConfig(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env", env_prefix="LOG_", extra="ignore"
+    )
+    # значение по умолчанию
+    path: str = "logs/app.log" # файл для записей логов
+    level: str = "INFO"        # уровень логирования
+    rotation: str = "10 MB"    # ротация файла при достижении предела, 10MB
+    retention: str = "1 month" # как долго хранятся старые логи
+    compression: str = "zip"   # архивирование старых логов
+    serialize: bool = True     # форматировать ли в JSON-формат
 
 class DatabaseConfig(BaseSettings):
     model_config = SettingsConfigDict(
@@ -45,3 +56,4 @@ class Config(BaseSettings):
     app: AppConfig = AppConfig()
     db: DatabaseConfig = DatabaseConfig()
     test_db: TestDatabaseConfig = TestDatabaseConfig()
+    logger: LoggerLoguruConfig = LoggerLoguruConfig()

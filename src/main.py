@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from src.books.router import router as books_router
 from src.config import Config
 from src.database import init_db
+from src.logger import init_logger
 
 app = FastAPI()
 
@@ -13,10 +14,11 @@ config = Config()
 
 # Инициализируем БД с конфигом реальной БД
 init_db(config.db.url)
+# Инициализируем БД с конфигом реальной БД
+init_logger()
 
 @app.get("/")
 def info():
-
     print(config.db.url)
     return {"app": config.app.name, "env": config.app.env, "version": "1.0"}
 
