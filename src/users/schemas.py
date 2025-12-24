@@ -6,7 +6,6 @@ class UserBase(BaseModel):
     username: str = Field(min_length=1)
     email: EmailStr
     password: bytes
-    ia_active: bool
 
 class UserRegister(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -14,4 +13,17 @@ class UserRegister(BaseModel):
     username: str = Field(min_length=1)
     email: EmailStr
     password: str
+
+class UserLogin(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    email: EmailStr
+    password: str
+
+class UserDetailResponse(UserBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    is_active: bool
+    password: bytes = Field(exclude=True)
 

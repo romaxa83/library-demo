@@ -1,7 +1,7 @@
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-BASE_DIR = Path(__file__).parent
+BASE_DIR = Path(__file__).parent.parent
 
 class AppConfig(BaseSettings):
     model_config = SettingsConfigDict(
@@ -31,6 +31,7 @@ class AuthJWTConfig(BaseSettings):
     private_key_path: Path = BASE_DIR / "jwt-private.pem" # путь к приватному ключу
     public_key_path: Path = BASE_DIR / "jwt-public.pem"   # путь к публичному ключу
     algorithm: str = "RS256"   # алгоритм шифрования
+    access_token_expired: int = 13   # время жизни токена
 
 
 class DatabaseConfig(BaseSettings):

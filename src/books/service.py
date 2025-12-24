@@ -7,7 +7,6 @@ from src.books.exceptions import AuthorNotFoundError, BookNotFoundError
 from src.books.models import Author, Book
 from src.books.schemas import AuthorCreate, AuthorFilterSchema, AuthorUpdate, BookCreate, BookUpdate, BookFilterSchema
 from src.utils.pagination import PaginationHelper
-from tests.fixtures import author
 
 
 class BookService:

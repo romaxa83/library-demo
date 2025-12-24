@@ -54,7 +54,7 @@ async def get_authors(
 
 
 @router.get(
-    "/authors/{author_id}", summary="Получить автора по ID", tags=["Authors"], response_model=AuthorDetailResponse
+    "/authors/{author_id}", summary="Получить автора по ID", tags=["Authors"],
 )
 async def get_author(author_id: int, service: BookServiceDep):
     """Получить автора по ID"""
