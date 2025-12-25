@@ -1,3 +1,41 @@
+[project]
+name = "library"
+version = "0.1.0"
+package-mode=false
+description = "demo-project by fastapi"
+authors = [
+    {name = "roman",email = "romaxa83@ukr.net"}
+]
+readme = "README.md"
+requires-python = "3.13.0"
+dependencies = [
+    "fastapi[standard] (>=0.127.0,<0.128.0)",
+    "bcrypt (>=5.0.0,<6.0.0)",
+    "sqlalchemy (>=2.0.45,<3.0.0)",
+    "pydantic-settings (>=2.12.0,<3.0.0)",
+    "python-dotenv (>=1.2.1,<2.0.0)",
+    "pydantic (>=2.12.5,<3.0.0)",
+    "httpx (>=0.28.1,<0.29.0)",
+    "loguru (>=0.7.3,<0.8.0)",
+    "psycopg2-binary (>=2.9.11,<3.0.0)",
+    "pyjwt (>=2.10.1,<3.0.0)"
+]
+
+[dependency-groups]
+dev = [
+    "pytest (>=9.0.2,<10.0.0)",
+    "black (>=25.12.0,<26.0.0)",
+    "faker (>=39.0.0,<40.0.0)",
+    "mypy (>=1.19.1,<2.0.0)",
+    "pylint (>=4.0.4,<5.0.0)",
+    "flake8 (>=7.3.0,<8.0.0)",
+    "isort (>=7.0.0,<8.0.0)"
+]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
 [tool.black]
 line-length = 120
 target-version = ['py313']

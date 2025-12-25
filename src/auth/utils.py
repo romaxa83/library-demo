@@ -6,6 +6,18 @@ from src.config import Config
 
 config = Config()
 
+TOKEN_TYPE_FIELD = "type"
+ACCESS_TOKEN_TYPE = "access"
+REFRESH_TOKEN_TYPE = "refresh"
+
+def create_access_token(payload: dict)->str:
+    payload.update({TOKEN_TYPE_FIELD: ACCESS_TOKEN_TYPE})
+    return encode_jwt(payload)
+
+def create_refresh_token(payload: dict)->str:
+    payload.update({TOKEN_TYPE_FIELD: REFRESH_TOKEN_TYPE})
+    return encode_jwt(payload=payload, expired=config.auth.refresh_token_expired)
+
 def encode_jwt(
         payload: dict,
         private_key: str = config.auth.private_key_path.read_text(),

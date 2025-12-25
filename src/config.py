@@ -31,7 +31,8 @@ class AuthJWTConfig(BaseSettings):
     private_key_path: Path = BASE_DIR / "jwt-private.pem" # путь к приватному ключу
     public_key_path: Path = BASE_DIR / "jwt-public.pem"   # путь к публичному ключу
     algorithm: str = "RS256"   # алгоритм шифрования
-    access_token_expired: int = 13   # время жизни токена
+    access_token_expired: int = 10   # время жизни токена
+    refresh_token_expired: int = 60*24*7   # время жизни токена
 
 
 class DatabaseConfig(BaseSettings):

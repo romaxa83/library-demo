@@ -39,6 +39,15 @@ services:
     volumes:
       - /var/lib/postgresql/data
 
+  mailer:
+    image: axllent/mailpit:latest
+    container_name: ${APP_NAME}__mailer
+    hostname: ${APP_NAME}__mailer
+    ports:
+      - 8025:8025
+      - 1025:1025
+
+
 volumes:
   db_data:
     driver: local

@@ -1,6 +1,7 @@
 import uvicorn
 from fastapi import FastAPI
-
+import os
+import signal
 from src.books.router import router as books_router
 from src.auth.controller import router as auth_router
 from src.config import Config
@@ -23,6 +24,10 @@ init_logger()
 def info():
     return {"app": config.app.name, "env": config.app.env, "version": "1.0"}
 
+@app.get("/stop")
+def stop_server():
+    print("Получен запрос на остановку сервера. Завершаем...")
+    os.kill(os.getpid(), signal.SIGKILL)
 
 if __name__ == "__main__":
     uvicorn.run("src.main:app", reload=True)

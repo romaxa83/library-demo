@@ -6,10 +6,14 @@ from src.users.models import User
 from src.users.schemas import (
     UserRegister,
     UserLogin,
-    UserDetailResponse
 )
 from src.auth.schemas import (
     TokenResponse,
+)
+from src.auth.utils import (
+    TOKEN_TYPE_FIELD,
+    ACCESS_TOKEN_TYPE,
+    REFRESH_TOKEN_TYPE,
 )
 from src.auth.exceptions import UnauthorizedError
 from loguru import logger
@@ -52,15 +56,44 @@ class AuthService:
             "email": user.email,
         }
 
-        token = auth_utils.encode_jwt(payload)
+        return TokenResponse(
+            token_type="Bearer",
+            access_token=auth_utils.create_access_token(payload),
+            refresh_token=auth_utils.create_refresh_token({"sub": str(user.id)}),
+        )
+
+    def refresh_tokens(self, token: str) -> TokenResponse:
+        payload = auth_utils.decode_jwt(token=token)
+
+        if payload.get(TOKEN_TYPE_FIELD) != REFRESH_TOKEN_TYPE:
+            raise UnauthorizedError(detail="Invalid token type")
+
+        user = self.user_service.find_by_id(self, id=int(payload.get("sub")))
+
+        if (
+                not user
+                or not user.is_active
+                or user.deleted_at is not None
+            ):
+            raise UnauthorizedError(detail="Invalid credentials")
+
+        payload = {
+            "sub": str(user.id),
+            "username": user.username,
+            "email": user.email,
+        }
 
         return TokenResponse(
             token_type="Bearer",
-            access_token=token,
+            access_token=auth_utils.create_access_token(payload),
+            refresh_token=auth_utils.create_refresh_token({"sub": str(user.id)}),
         )
 
-    def current_user(self, token: str):
+    def current_user(self, token: str)->User | None :
         payload = auth_utils.decode_jwt(token=token)
+
+        if payload.get(TOKEN_TYPE_FIELD) != ACCESS_TOKEN_TYPE:
+            raise UnauthorizedError(detail="Invalid token type")
 
         user = self.user_service.find_by_id(self, id=int(payload.get("sub")))
 
@@ -72,6 +105,3 @@ class AuthService:
             raise UnauthorizedError(detail="Invalid credentials")
 
         return self.user_service.find_by_id(self, id=int(payload.get("sub")))
-
-
-

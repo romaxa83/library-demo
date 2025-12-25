@@ -2,7 +2,6 @@ from fastapi import APIRouter, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jwt import InvalidTokenError
 from loguru import logger
-from src.auth import utils as auth_utils
 from src.auth.dependencies import AuthServiceDep
 from src.auth.exceptions import UnauthorizedError
 from src.users.schemas import (
@@ -62,3 +61,18 @@ def current_user(
         return service.current_user(token)
     except InvalidTokenError as err:
         raise UnauthorizedError(detail=str(err))
+
+@router.post(
+    "/refresh-tokens",
+    summary="Обновление токенов",
+    status_code=status.HTTP_200_OK,
+    response_model=TokenResponse
+)
+def refresh_tokens(
+        service: AuthServiceDep,
+        credentials: HTTPAuthorizationCredentials = Depends(http_bearer),
+) -> TokenResponse:
+    """Обновление токенов"""
+    token = credentials.credentials
+
+    return service.refresh_tokens(token)
