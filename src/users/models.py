@@ -1,10 +1,7 @@
 from datetime import datetime
-
 from sqlalchemy import Boolean, DateTime, String, LargeBinary, func
 from sqlalchemy.orm import Mapped, mapped_column
-
 from src.database import Base
-
 
 class User(Base):
     __tablename__ = "users"
@@ -13,7 +10,6 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     email_verify_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    # password: Mapped[str] = mapped_column(String(255), nullable=False)
     password: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -26,4 +22,3 @@ class User(Base):
     def is_deleted(self) -> bool:
         """Проверить, удалена ли запись"""
         return self.deleted_at is not None
-

@@ -23,6 +23,10 @@ def init_logger():
     """
     Настраивает логгер для всего приложения в зависимости от окружения.
     """
+
+    if config.app.env == "testing":
+        return
+
     # Удаляем стандартный обработчик, чтобы избежать дублирования
     logger.remove()
 
@@ -55,7 +59,7 @@ def init_logger():
         logger.info("Режим разработки: логирование настроено для вывода в консоль.")
 
     # Конфигурация для продакшена
-    else:
+    elif config.app.env == "prod":
         # В консоль выводим только важные сообщения
         logger.add(sys.stderr, level="INFO", format=prod_format, colorize=False)
         logger.info("Режим продакшена: логирование настроено для вывода в консоль и файл.")

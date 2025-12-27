@@ -9,10 +9,8 @@ config = Config()
 engine = None
 SessionLocal = None
 
-
 class Base(DeclarativeBase):
     pass
-
 
 def init_db(db_url: str = None):
     """Инициализация БД с использованием конкретного URL"""

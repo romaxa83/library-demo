@@ -9,6 +9,8 @@ config = Config()
 TOKEN_TYPE_FIELD = "type"
 ACCESS_TOKEN_TYPE = "access"
 REFRESH_TOKEN_TYPE = "refresh"
+VERIFY_EMAIL_TOKEN_TYPE = "verify-email"
+RESET_PASSWORD_TOKEN_TYPE = "reset-password"
 
 def create_access_token(payload: dict)->str:
     payload.update({TOKEN_TYPE_FIELD: ACCESS_TOKEN_TYPE})
@@ -17,6 +19,14 @@ def create_access_token(payload: dict)->str:
 def create_refresh_token(payload: dict)->str:
     payload.update({TOKEN_TYPE_FIELD: REFRESH_TOKEN_TYPE})
     return encode_jwt(payload=payload, expired=config.auth.refresh_token_expired)
+
+def create_verify_email_token(payload: dict)->str:
+    payload.update({TOKEN_TYPE_FIELD: VERIFY_EMAIL_TOKEN_TYPE})
+    return encode_jwt(payload=payload, expired=config.email.verify_token_expired)
+
+def create_reset_password_token(payload: dict)->str:
+    payload.update({TOKEN_TYPE_FIELD: VERIFY_EMAIL_TOKEN_TYPE})
+    return encode_jwt(payload=payload, expired=config.auth.reset_password_token_expired)
 
 def encode_jwt(
         payload: dict,

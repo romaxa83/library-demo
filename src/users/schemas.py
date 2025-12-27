@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
+from datetime import datetime
 
 class UserBase(BaseModel):
     model_config = ConfigDict(from_attributes=True, strict=True)
@@ -25,5 +26,6 @@ class UserDetailResponse(UserBase):
 
     id: int
     is_active: bool
+    email_verify_at: datetime | None
     password: bytes = Field(exclude=True)
 

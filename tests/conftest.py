@@ -17,16 +17,17 @@ from src.config import Config
 from src.database import Base
 from src.main import app
 from src.books import dependencies
+from dotenv import load_dotenv
 
-# Используем тестовую БД конфигурацию
-test_config = Config()
-test_db_config = test_config.test_db
+# Загружаем тестовый конфиг принудительно в самом начале
+load_dotenv(".env.testing", override=True)
 
+config = Config()
 
 @pytest.fixture(scope="session")
 def test_database_url():
     """Возвращает URL тестовой БД"""
-    return test_db_config.url
+    return config.db.url
 
 
 def run_migrations(database_url: str):
@@ -115,4 +116,5 @@ pytest_plugins = [
     "tests.fixtures.base",
     "tests.fixtures.author",
     "tests.fixtures.book",
+    "tests.fixtures.user",
 ]

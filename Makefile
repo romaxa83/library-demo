@@ -14,17 +14,18 @@ help:  ## отображение данного сообщения help
 # Сompound commands
 
 .PHONY: up
-up: docker_up ## составная команда, для поднятия проекта [docker_up -> test_init -> info]
+up: docker_up start_app ## составная команда, для поднятия проекта [docker_up -> start_app]
 
-
-#.PHONY: up
-#up: docker_up info ## составная команда, для поднятия проекта [docker_up -> test_init -> info]
 ##======================================
 # Command
 
 #.PHONY: build
 #build: ## собирает контейнеры
 #	docker compose build --build-arg USER_ID=${UID} --build-arg GROUP_ID=${GID}
+
+.PHONY: start_app
+start_app: ## запускаем сервер
+	python -m src.main
 
 .PHONY: docker_up
 docker_up: ## подымает контейнеры

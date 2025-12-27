@@ -1,8 +1,6 @@
 import pytest
 from faker import Faker
-
 from src.books.models import Book
-
 
 @pytest.fixture
 def fake():

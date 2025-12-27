@@ -10,6 +10,7 @@ from src import database
 def get_session() -> Generator[Session, None, None]:
     """Получить сессию базы данных"""
     # SessionLocal будет инициализирован в init_db()
+    print("DB")
     if database.SessionLocal is None:
         database.init_db()
 

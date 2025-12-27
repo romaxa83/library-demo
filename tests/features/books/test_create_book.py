@@ -1,4 +1,6 @@
 from fastapi import status
+from pygments.lexers import data
+
 
 class TestCreateBook:
     """Тесты для создания книги"""
@@ -20,6 +22,8 @@ class TestCreateBook:
 
         data = response.json()
 
+        assert "id" in data
+        assert "created_at" in data
         assert data["title"] == _data["title"]
         assert data["description"] == _data["description"]
         assert data["page"] == _data["page"]

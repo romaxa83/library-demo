@@ -29,6 +29,7 @@ wheels/
 
 # Переменные окружения
 .env
+.env.testing
 .env.local
 .env.development
 .env.production
