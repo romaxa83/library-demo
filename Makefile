@@ -14,7 +14,7 @@ help:  ## отображение данного сообщения help
 # Сompound commands
 
 .PHONY: up
-up: docker_up start_app ## составная команда, для поднятия проекта [docker_up -> start_app]
+up: docker_up ## составная команда, для поднятия проекта [docker_up -> start_app]
 
 ##======================================
 # Command

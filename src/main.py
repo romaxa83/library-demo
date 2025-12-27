@@ -4,6 +4,7 @@ import os
 import signal
 from src.books.router import router as books_router
 from src.auth.controller import router as auth_router
+from src.rbac.controller import router as rbac_router
 from src.config import Config
 from src.database import init_db
 from src.logger import init_logger
@@ -11,6 +12,7 @@ from src.logger import init_logger
 app = FastAPI()
 
 app.include_router(auth_router)
+app.include_router(rbac_router)
 app.include_router(books_router)
 
 config = Config()

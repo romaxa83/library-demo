@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Boolean, DateTime, String, LargeBinary, func
+from sqlalchemy import Boolean, DateTime, String, LargeBinary, Integer, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column
 from src.database import Base
 
@@ -12,6 +12,8 @@ class User(Base):
     email_verify_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     password: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    role_id: Mapped[int] = mapped_column(Integer, ForeignKey("rbac_roles.id"))
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

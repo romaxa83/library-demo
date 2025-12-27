@@ -1,6 +1,5 @@
 from fastapi import status
 
-
 class TestCreateAuthor:
     """Тесты для создания автора"""
 

@@ -1,4 +1,5 @@
 import sys
+import os
 from pathlib import Path
 from faker import Faker
 
@@ -13,7 +14,7 @@ from fastapi.testclient import TestClient
 from alembic.config import Config as AlembicConfig
 from alembic import command
 
-from src.config import Config
+from src.config import Config, BASE_DIR
 from src.database import Base
 from src.main import app
 from src.books import dependencies
@@ -26,13 +27,22 @@ config = Config()
 
 @pytest.fixture(scope="session")
 def test_database_url():
+
+    print("00000000000")
+
     """Возвращает URL тестовой БД"""
     return config.db.url
 
 
 def run_migrations(database_url: str):
     """Запустить миграции Alembic на указанную БД"""
-    alembic_config = AlembicConfig("alembic.ini")
+
+    # миграции запускаются с тестов, нужно правильный путь к alembic.ini
+    base_dir = BASE_DIR
+    ini_path = os.path.join(base_dir, "alembic.ini")
+    ini_path = os.path.abspath(ini_path)
+
+    alembic_config = AlembicConfig(ini_path)
     alembic_config.set_main_option("sqlalchemy.url", database_url)
 
     try:
@@ -117,4 +127,6 @@ pytest_plugins = [
     "tests.fixtures.author",
     "tests.fixtures.book",
     "tests.fixtures.user",
+    "tests.fixtures.role",
+    "tests.fixtures.permission",
 ]
