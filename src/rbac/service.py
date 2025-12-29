@@ -1,13 +1,13 @@
-from datetime import datetime
 from typing import Sequence
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from src.books.exceptions import AuthorNotFoundError, BookNotFoundError
-from src.books.models import Author, Book
-from src.books.schemas import AuthorCreate, AuthorFilterSchema, AuthorUpdate, BookCreate, BookUpdate, BookFilterSchema
-from src.utils.pagination import PaginationHelper
+from src.rbac.exceptions import RoleNotFoundError
+from src.rbac.schemas import (
+    RoleCreate,
+    RoleUpdate,
+)
 from src.rbac.models import Role, Permission
 
 
@@ -21,117 +21,32 @@ class RbacService:
 
         return self.session.scalars(stmt).all()
 
-    def get_by_id(self, book_id: int) -> Book:
-        """Получить книгу по ID"""
-        stmt = select(Book).options(selectinload(Book.author)).where(Book.id == book_id)
+    def get_by_id(self, role_id: int) -> Role:
+        """Получить роль по ID"""
+        stmt = (
+            select(Role)
+            .options(selectinload(Role.permissions))
+            .where(Role.id == role_id)
+        )
         model = self.session.scalar(stmt)
 
-        if not model or model.deleted_at is not None:
-            raise BookNotFoundError(book_id)
+        if not model:
+            raise RoleNotFoundError(role_id)
 
         return model
 
-    def create(self, data: BookCreate) -> Book:
-        """Создать новую книгу"""
-        # Проверяем существование автора
-        self._validate_author_exists(data.author_id)
+    async def create_role(self, data: RoleCreate) -> Role:
+        model = Role(**data.model_dump())
 
-        model = Book(**data.model_dump())
-        model.updated_at = datetime.now()
         self.session.add(model)
         self.session.commit()
         self.session.refresh(model)
+
         return model
 
-    def update(self, book_id: int, data: BookUpdate) -> Book:
-        """Обновить книгу"""
-        model = self.get_by_id(book_id)
-
-        update_data = data.model_dump(exclude_unset=True)
-
-        # Проверяем внешние ключи, если они обновляются
-        if "author_id" in update_data:
-            self._validate_author_exists(update_data["author_id"])
-
-        for field, value in update_data.items():
-            setattr(model, field, value)
-
-        self.session.commit()
-        self.session.refresh(model)
-        return model
-
-    def delete(self, book_id: int) -> None:
-        """Удалить книгу (soft delete)"""
-        model = self.get_by_id(book_id)
-        model.deleted_at = datetime.now()
-        self.session.commit()
-
-    def _validate_author_exists(self, author_id: int) -> None:
-        """Проверить существование автора"""
-        # todo оптимизировать (deleted_at - проверять на уровни бд)
-        author = (self.session.get(Author, author_id))
-        if not author or author.deleted_at is not None:
-            raise AuthorNotFoundError(author_id)
-
-    # ==================== AUTHORS ====================
-    def get_all_authors(self, filters: AuthorFilterSchema) -> tuple[list[Author], int]:
-        """
-        Получить список авторов с фильтрацией и сортировкой
-
-        Args:
-            filters: Объект с параметрами фильтрации
-
-        Returns:
-            Кортеж (список авторов, всего записей в БД)
-        """
-
-        stmt = select(Author)
-
-        # ✨ Фильтр по статусу удаления
-        if filters.deleted == "active":
-            stmt = stmt.where(Author.deleted_at.is_(None))
-        elif filters.deleted == "deleted":
-            stmt = stmt.where(Author.deleted_at.isnot(None))
-        # elif filters.deleted == "all" — не добавляем условие, получаем всех
-
-        # ✨ Поиск по имени
-        if filters.search:
-            stmt = stmt.where(Author.name.ilike(f"%{filters.search}%"))
-
-        # ✨ Сортировка
-        if filters.sort_by == "name":
-            order_column = Author.name
-        else:
-            order_column = Author.name  # По умолчанию по имени
-
-        if filters.sort_order.lower() == "desc":
-            stmt = stmt.order_by(order_column.desc())
-        else:
-            stmt = stmt.order_by(order_column.asc())
-
-        authors, total = PaginationHelper.paginate(self.session, stmt, filters.skip, filters.limit)
-
-        return authors, total
-
-    def get_author_by_id(self, author_id: int) -> Author:
-        """Получить автора по ID"""
-        stmt = select(Author).where(Author.id == author_id)
-        model = self.session.scalar(stmt)
-        if not model or model.deleted_at is not None:
-            raise AuthorNotFoundError(author_id)
-        return model
-
-    def create_author(self, data: AuthorCreate) -> Author:
-        """Создать нового автора"""
-        model = Author(**data.model_dump())
-        self.session.add(model)
-        self.session.commit()
-        self.session.refresh(model)
-        return model
-
-    def update_author(self, author_id: int, data: AuthorUpdate) -> Author:
-        """Обновить автора"""
-        model = self.get_author_by_id(author_id)
+    def update_role(self, role_id: int, data: RoleUpdate) -> Role:
+        """Обновить роль"""
+        model = self.get_by_id(role_id)
 
         update_data = data.model_dump(exclude_unset=True)
 
@@ -142,37 +57,20 @@ class RbacService:
         self.session.refresh(model)
         return model
 
-    def delete_author(self, author_id: int) -> None:
-        """Удалить автора (soft delete)"""
-        model = self.get_author_by_id(author_id)
-        model.deleted_at = datetime.now()
+    def delete_role(self, role_id: int) -> None:
+        """Удаляем роль"""
+        stmt = select(Role).where(Role.id == role_id)
+        model = self.session.scalar(stmt)
+
+        # todo добавить проверку что нельзя удалить роль которая привязана к пользователю, а также дефолтный роли (установленные в системе)
+        if not model:
+            raise RoleNotFoundError(role_id)
+
+        self.session.delete(model)
         self.session.commit()
 
-    def restore_author(self, author_id: int) -> Author:
-        """Восстановить удалённого автора"""
-        stmt = select(Author).where(Author.id == author_id).where(Author.deleted_at.isnot(None))
-        author = self.session.scalar(stmt)
-        if not author:
-            raise AuthorNotFoundError(author_id)
+    def get_all_permissions(self) -> Sequence[Permission]:
 
-        author.deleted_at = None
-        self.session.commit()
-        self.session.refresh(author)
-        return author
+        stmt = select(Permission)
 
-    def force_delete_author(self, author_id: int) -> None:
-        """Полностью удалить автора из БД (если уже был удалён)"""
-        # Получаем даже удалённого автора
-        stmt = select(Author).where(Author.id == author_id)
-        author = self.session.scalar(stmt)
-
-        if not author:
-            raise AuthorNotFoundError(author_id)
-
-        # Проверяем, был ли он удалён (soft delete)
-        if author.deleted_at is None:
-            raise ValueError(f"Author {author_id} is not soft-deleted. Use delete() for soft delete.")
-
-        # Полностью удаляем из БД
-        self.session.delete(author)
-        self.session.commit()
+        return self.session.scalars(stmt).all()

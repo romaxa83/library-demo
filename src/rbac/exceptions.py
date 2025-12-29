@@ -1,0 +1,7 @@
+from fastapi import HTTPException, status
+
+
+class RoleNotFoundError(HTTPException):
+    def __init__(self, role_id: int):
+        super().__init__(status_code=status.HTTP_404_NOT_FOUND, detail=f"Role with id {role_id} not found")
+
