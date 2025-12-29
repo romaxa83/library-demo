@@ -5,3 +5,6 @@ class RoleNotFoundError(HTTPException):
     def __init__(self, role_id: int):
         super().__init__(status_code=status.HTTP_404_NOT_FOUND, detail=f"Role with id {role_id} not found")
 
+class PermissionNotFoundError(HTTPException):
+    def __init__(self, permission_id: int):
+        super().__init__(status_code=status.HTTP_404_NOT_FOUND, detail=f"Permission with id {permission_id} not found")

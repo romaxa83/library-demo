@@ -12,15 +12,20 @@ class RoleCreate(RoleBase):
 class RoleUpdate(RoleBase):
     pass
 
+class PermissionCreate(RoleBase):
+    group: str = Field(min_length=1)
+    description: str | None = None
+
+class PermissionUpdate(BaseModel):
+    description: str | None = None
+
 class RoleDetailResponse(RoleBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     permissions: list[PermissionsBase]
 
-class PermissionsDetailResponse(PermissionsBase):
+class PermissionsDetailResponse(PermissionCreate):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    group: str = Field(min_length=1)
-    description: str | None = None

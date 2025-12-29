@@ -1,5 +1,6 @@
+from typing import Annotated, Generator
 from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, sessionmaker, Session
 
 from src.config import Config
 
@@ -21,7 +22,7 @@ def init_db(db_url: str = None):
 
     engine = create_engine(
         db_url,
-        echo=True,
+        echo=False, # вывод логов в терминал
         pool_pre_ping=True,
         pool_size=10,
         max_overflow=20
