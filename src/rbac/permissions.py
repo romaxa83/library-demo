@@ -75,3 +75,13 @@ def get_permissions_for_seed():
             {"alias": Permissions.BOOK_DELETE.value, "description": "Удалить книгу"},
         ],
     }
+
+def get_permissions_for_roles():
+    return {
+        DefaultRole.USER.value: [
+            Permissions.USER_SHOW.value,
+            Permissions.ROLE_SHOW.value,
+            Permissions.AUTHOR_SHOW.value,
+            Permissions.BOOK_SHOW.value
+        ],
+    }

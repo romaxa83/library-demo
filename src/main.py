@@ -8,8 +8,12 @@ from src.rbac.controller import router as rbac_router
 from src.config import Config
 from src.database import init_db
 from src.logger import init_logger
+from src.core.errors.errors_handlers import register_errors_handlers
+
 
 app = FastAPI()
+
+register_errors_handlers(app)
 
 app.include_router(auth_router)
 app.include_router(rbac_router)

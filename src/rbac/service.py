@@ -7,11 +7,13 @@ from loguru import logger
 
 from src.rbac.permissions import (
     DefaultRole,
-    get_permissions_for_seed
+    get_permissions_for_seed,
+    get_permissions_for_roles
 )
 from src.rbac.exceptions import (
     RoleNotFoundError,
     PermissionNotFoundError,
+    RoleNotFoundByAliasError
 )
 from src.rbac.schemas import (
     RoleCreate,
@@ -61,11 +63,22 @@ class RbacService:
 
     def find_role_by_alias(self, alias: str) -> Role|None:
         """Получить роль по алиасу"""
-
-        stmt = (select(Role).
-                options(selectinload(Role.permissions))
+        stmt = (select(Role)
+                .options(selectinload(Role.permissions))
                 .where(Role.alias == alias))
         model = self.session.scalar(stmt)
+
+        return model
+
+    def get_role_by_alias(self, alias: str) -> Role|None:
+        """Получить роль по алиасу"""
+        stmt = (select(Role)
+                .options(selectinload(Role.permissions))
+                .where(Role.alias == alias))
+        model = self.session.scalar(stmt)
+
+        if not model:
+            raise RoleNotFoundByAliasError(alias)
 
         return model
 
@@ -76,9 +89,18 @@ class RbacService:
         return model
 
     async def create_role(self, data: RoleCreate) -> Role:
-        model = Role(**data.model_dump())
+        data_role = data.model_dump(exclude={"permission_ids"})
+
+        model = Role(**data_role)
 
         self.session.add(model)
+        self.session.flush()
+
+        if data.permission_ids:
+            for perm_id in data.permission_ids:
+                perm = self.get_permission_by_id(perm_id)
+                model.permissions.append(perm)
+
         self.session.commit()
         self.session.refresh(model)
 
@@ -90,10 +112,17 @@ class RbacService:
         """Обновить роль"""
         model = self.get_by_id(role_id)
 
-        update_data = data.model_dump(exclude_unset=True)
+        data_update_role = data.model_dump(exclude={"permission_ids"})
 
-        for field, value in update_data.items():
+        for field, value in data_update_role.items():
             setattr(model, field, value)
+        self.session.flush()
+
+        if data.permission_ids:
+            model.permissions.clear()
+            for perm_id in data.permission_ids:
+                perm = self.get_permission_by_id(perm_id)
+                model.permissions.append(perm)
 
         self.session.commit()
         self.session.refresh(model)
@@ -124,7 +153,7 @@ class RbacService:
         self.session.commit()
         self.session.refresh(model)
 
-        logger.success(f"Created permission: {model.alias}")
+        # logger.success(f"Created permission: {model.alias}")
 
         return model
 
@@ -145,6 +174,16 @@ class RbacService:
         for role in DefaultRole:
             if self.find_role_by_alias(alias=role.value) is None:
                 asyncio.run(self.create_role(RoleCreate(alias=role.value)))
+
+    def attach_permissions_to_role(self) -> None:
+        for role_alias, perms in get_permissions_for_roles().items():
+            if role := self.get_role_by_alias(alias=role_alias):
+                role.permissions.clear()
+                for perm_alias in perms:
+                    if perm := self.find_permission_by_alias(alias=perm_alias):
+                        role.permissions.append(perm)
+
+                self.session.commit()
 
     def insert_or_update_permission(self) -> None:
         for group, perms in get_permissions_for_seed().items():

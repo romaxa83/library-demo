@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field
+from typing import Annotated
 
 class RoleBase(BaseModel):
     alias: str = Field(min_length=1)
@@ -7,10 +8,10 @@ class PermissionsBase(BaseModel):
     alias: str = Field(min_length=1)
 
 class RoleCreate(RoleBase):
-    pass
+    permission_ids: list[Annotated[int, Field(gt=0, description="Массив ID permission")]] = []
 
 class RoleUpdate(RoleBase):
-    pass
+    permission_ids: list[Annotated[int, Field(gt=0, description="Массив ID permission")]] = []
 
 class PermissionCreate(RoleBase):
     group: str = Field(min_length=1)
