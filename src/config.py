@@ -11,6 +11,8 @@ class AppConfig(BaseSettings):
     name: str = "App"
     env: str = "dev"
     url: str = "https://localhost"
+    superadmin_email: str = "admin@gmail.com"
+    superadmin_password: str = "password12"
 
 class LoggerLoguruConfig(BaseSettings):
     model_config = SettingsConfigDict(
