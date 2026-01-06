@@ -22,8 +22,6 @@ async def send_email(
         html_text = MIMEText(content_html, "html", "utf-8")
         msg.attach(html_text)
 
-    print(config.mail)
-
     await aiosmtplib.send(
         msg,
         hostname=config.mail.host,

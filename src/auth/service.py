@@ -32,7 +32,11 @@ from src.auth.utils import (
     RESET_PASSWORD_TOKEN_TYPE,
 )
 from src.auth.exceptions import UnauthorizedError
-from src.users.exceptions import UserNotFoundError
+from src.rbac.exceptions import RoleNotFoundByAliasError
+from src.users.exceptions import (
+    UserNotFoundError,
+    UserAlreadyExistsError
+)
 from loguru import logger
 
 http_bearer = HTTPBearer()
@@ -48,6 +52,10 @@ class AuthService:
         role = self.session.scalar(select(Role).where(Role.alias == DefaultRole.USER.value))
         if not role:
             raise RoleNotFoundByAliasError(DefaultRole.USER.value)
+
+        if self.session.scalar(select(User).where(User.email == data.email)):
+            raise UserAlreadyExistsError(data.email)
+
 
         model = User(**data.model_dump())
 
@@ -73,13 +81,9 @@ class AuthService:
         q = select(User).where(User.email == data.email)
         user = self.session.scalar(q)
 
-        print("++++++++++++++++++++++++++++++")
-        print(data.email)
-        print(user)
-
-        s = select(User)
-        count = self.session.scalars(s).all()
-        print(count)
+        # s = select(User)
+        # count = self.session.scalars(s).all()
+        # print(count)
         # print(select(User).)
         if (
                 not user
@@ -89,17 +93,20 @@ class AuthService:
             ):
             raise UnauthorizedError(detail="Invalid credentials")
 
+        return TokenResponse(
+            token_type="Bearer",
+            access_token=self._create_access_token(user),
+            refresh_token=auth_utils.create_refresh_token({"sub": str(user.id)}),
+        )
+
+    def _create_access_token(self, user: User)->str:
         payload = {
             "sub": str(user.id),
             "username": user.username,
             "email": user.email,
         }
 
-        return TokenResponse(
-            token_type="Bearer",
-            access_token=auth_utils.create_access_token(payload),
-            refresh_token=auth_utils.create_refresh_token({"sub": str(user.id)}),
-        )
+        return auth_utils.create_access_token(payload)
 
     def refresh_tokens(self, token: str) -> TokenResponse:
         payload = auth_utils.decode_jwt(token=token)

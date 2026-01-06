@@ -7,3 +7,10 @@ class UserNotFoundError(HTTPException):
             detail="User not found"
         )
 
+class UserAlreadyExistsError(HTTPException):
+    """Пользователь с таким email уже существует"""
+    def __init__(self, email: str):
+        super().__init__(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"User with email '{email}' already exists"
+        )

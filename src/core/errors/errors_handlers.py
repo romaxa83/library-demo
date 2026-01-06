@@ -29,6 +29,16 @@ def register_errors_handlers(app: FastAPI) -> None:
         msg = (exc.orig.args)
 
         return ORJSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             content={"msg": msg},
+        )
+
+    @app.exception_handler(ValueError)
+    def handle_value_error(
+            request: Request,
+            exc: ValueError,
+    ) -> ORJSONResponse:
+        return ORJSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"msg": exc},
         )

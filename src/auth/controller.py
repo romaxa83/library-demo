@@ -34,10 +34,6 @@ router = APIRouter(
 )
 async def signup(data: UserRegister, service: AuthServiceDep) -> UserDetailResponse:
     """Регистрация нового пользователя"""
-
-    # print(data)
-    # logger.info(data)
-
     return await service.register(data)
 
 @router.post(
@@ -47,7 +43,6 @@ async def signup(data: UserRegister, service: AuthServiceDep) -> UserDetailRespo
     response_model=TokenResponse
 )
 def login(data: UserLogin, service: AuthServiceDep) -> TokenResponse:
-
     """Авторизация пользователя"""
     return service.login(data)
 

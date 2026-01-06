@@ -16,6 +16,7 @@ def permission_factory(db_session, fake):
         )
         db_session.add(model)
         db_session.commit()
+        db_session.refresh(model)
         return model
 
     return create

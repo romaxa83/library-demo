@@ -1,15 +1,18 @@
-import json
-import pytest
 from datetime import datetime
 from fastapi import status
+
+from src.rbac.permissions import Permissions
 
 
 class TestGetAuthors:
     """Тесты для получения списка авторов"""
 
-    def test_get_authors_empty_list(self, client):
+    def test_get_authors_empty_list(self, client, create_user, auth_header)->None:
         """Получить пустой список авторов"""
-        response = client.get("/authors")
+        user = create_user(permissions=[Permissions.AUTHOR_LIST.value])
+        header = auth_header(user)
+
+        response = client.get("/authors", headers=header)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
 
@@ -21,16 +24,16 @@ class TestGetAuthors:
         assert data["meta"]["total_pages"] == 0
         assert data["meta"]["skip"] == 0
 
-    def test_get_authors_with_limit(self, client, create_authors):
+    def test_get_authors_with_limit(self, client, create_authors, superadmin_user, auth_header)->None:
         """Получить авторов используя лимит"""
+        header = auth_header(superadmin_user)
 
         create_authors(count=3)
 
-        response = client.get("/authors?skip=0&limit=2")
+        response = client.get("/authors?skip=0&limit=2", headers=header)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
 
-        # print(json.dumps(data, ensure_ascii=False, indent=2))
         assert len(data["data"]) == 2
         assert data["meta"]["total"] == 3
         assert data["meta"]["count"] == 2
@@ -39,12 +42,13 @@ class TestGetAuthors:
         assert data["meta"]["total_pages"] == 2
         assert data["meta"]["skip"] == 0
 
-    def test_get_authors_with_skip(self, client, create_authors):
+    def test_get_authors_with_skip(self, client, create_authors, superadmin_user, auth_header)->None:
         """Получить авторов используя skip"""
+        header = auth_header(superadmin_user)
 
         create_authors(count=3)
 
-        response = client.get("/authors?skip=2&limit=2")
+        response = client.get("/authors?skip=2&limit=2", headers=header)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
 
@@ -56,28 +60,30 @@ class TestGetAuthors:
         assert data["meta"]["total_pages"] == 2
         assert data["meta"]["skip"] == 2
 
-    def test_get_authors_with_search(self, client, create_author):
+    def test_get_authors_with_search(self, client, create_author, superadmin_user, auth_header)->None:
         """Получить авторов с поиском"""
+        header = auth_header(superadmin_user)
 
         name = "John Doe"
         author = create_author(name=name)
         create_author(name="Tester")
 
-        response = client.get("/authors?search=John")
+        response = client.get("/authors?search=John", headers=header)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data["data"]) == 1
         assert data["data"][0]["name"] == author.name
         assert data["meta"]["total"] == 1
 
-    def test_get_authors_with_sort_asc(self, client, create_author):
+    def test_get_authors_with_sort_asc(self, client, create_author, superadmin_user, auth_header)->None:
         """Получить авторов с сортировкой"""
+        header = auth_header(superadmin_user)
 
         author_1 = create_author(name="Tom")
         author_2 = create_author(name="Alen")
         author_3 = create_author(name="John")
 
-        response = client.get("/authors?sort_by=name&sort_order=asc")
+        response = client.get("/authors?sort_by=name&sort_order=asc", headers=header)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data["data"]) == 3
@@ -85,37 +91,51 @@ class TestGetAuthors:
         assert data["data"][1]["name"] == author_3.name
         assert data["data"][2]["name"] == author_1.name
 
-    def test_get_authors_with_only_active(self, client, create_author):
+    def test_get_authors_with_only_active(self, client, create_author, superadmin_user, auth_header)->None:
         """Получить авторов только активных (не удаленных)"""
+        header = auth_header(superadmin_user)
 
         author = create_author()
         create_author(deleted_at=datetime.now())
 
-        response = client.get("/authors")
+        response = client.get("/authors", headers=header)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data["data"]) == 1
         assert data["data"][0]["id"] == author.id
 
-    def test_get_authors_with_only_deleted(self, client, create_author):
+    def test_get_authors_with_only_deleted(self, client, create_author, superadmin_user, auth_header)->None:
         """Получить авторов только удаленные"""
+        header = auth_header(superadmin_user)
 
         create_author()
         deleted_author = create_author(deleted_at=datetime.now())
 
-        response = client.get("/authors?deleted=deleted")
+        response = client.get("/authors?deleted=deleted", headers=header)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data["data"]) == 1
         assert data["data"][0]["id"] == deleted_author.id
 
-    def test_get_authors_with_all_status(self, client, create_author):
+    def test_get_authors_with_all_status(self, client, create_author, superadmin_user, auth_header)->None:
         """Получить авторов и активных и удаленных"""
+        header = auth_header(superadmin_user)
 
         create_author()
         create_author(deleted_at=datetime.now())
 
-        response = client.get("/authors?deleted=all")
+        response = client.get("/authors?deleted=all", headers=header)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data["data"]) == 2
+
+    def test_not_perm(self, client, create_user, auth_header)->None:
+        user = create_user(permissions=[Permissions.AUTHOR_SHOW.value])
+        header = auth_header(user)
+
+        response = client.get("/authors", headers=header)
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_not_auth(self, client)->None:
+        response = client.get("/authors")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED

@@ -1,12 +1,17 @@
 from fastapi import status
 from pygments.lexers import data
 
+from src.rbac.permissions import Permissions
+
 
 class TestCreateBook:
     """Тесты для создания книги"""
 
-    def test_create_book_success(self, client, create_author):
+    def test_create_book_success(self, client, create_author, create_user, auth_header)->None:
         """Успешное создание книги"""
+        user = create_user(permissions=[Permissions.BOOK_CREATE.value])
+        header = auth_header(user)
+
         author = create_author()
 
         _data = {
@@ -17,7 +22,7 @@ class TestCreateBook:
             "author_id": author.id,
         }
 
-        response = client.post("/books", json=_data)
+        response = client.post("/books", json=_data, headers=header)
         assert response.status_code == status.HTTP_201_CREATED
 
         data = response.json()
@@ -35,7 +40,7 @@ class TestCreateBook:
         assert data["created_at"] is not None
         assert data["updated_at"] is not None
 
-    def test_create_book_only_required_fields(self, client, create_author):
+    def test_create_book_only_required_fields(self, client, create_author, superadmin_headers)->None:
         """Успешное создание книги только с обязательными полями"""
         author = create_author()
 
@@ -44,7 +49,7 @@ class TestCreateBook:
             "author_id": author.id,
         }
 
-        response = client.post("/books", json=_data)
+        response = client.post("/books", json=_data, headers=superadmin_headers)
         assert response.status_code == status.HTTP_201_CREATED
 
         data = response.json()
@@ -54,7 +59,7 @@ class TestCreateBook:
         assert data["page"] == 0
         assert data["is_available"] == True
 
-    def test_create_book_without_title(self, client, create_author):
+    def test_create_book_without_title(self, client, create_author, superadmin_headers)->None:
         """Попытка создания книги без названия - должна быть ошибка"""
         author = create_author()
 
@@ -62,21 +67,21 @@ class TestCreateBook:
             "author_id": author.id,
         }
 
-        response = client.post("/books", json=_data)
-        # print(response.json())
+        response = client.post("/books", json=_data, headers=superadmin_headers)
+
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
-    def test_create_book_without_author(self, client):
+    def test_create_book_without_author(self, client, superadmin_headers)->None:
         """Попытка создания книгу без автора"""
         _data = {
             "title": "test title"
         }
 
-        response = client.post("/books", json=_data)
+        response = client.post("/books", json=_data, headers=superadmin_headers)
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
-    def test_create_book_duplicate_title(self, client,create_book):
+    def test_create_book_duplicate_title(self, client,create_book, superadmin_headers)->None:
         """Создание книги с существующим названием (должна быть ошибка)"""
 
         book = create_book()
@@ -86,12 +91,11 @@ class TestCreateBook:
             "author_id": book.author.id,
         }
 
-        response = client.post("/books", json=_data)
-        # Зависит от бизнес-логики - может быть 409 или 201
-        # Предполагаем, что дубликаты имён разрешены
-        assert response.status_code == status.HTTP_201_CREATED
+        response = client.post("/books", json=_data, headers=superadmin_headers)
 
-    def test_create_book_empty_title(self, client, create_author):
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+    def test_create_book_empty_title(self, client, create_author, superadmin_headers)->None:
         """Создание книги с пустым названием (должна быть ошибка)"""
 
         author = create_author()
@@ -101,7 +105,7 @@ class TestCreateBook:
             "author_id": author.id,
         }
 
-        response = client.post("/books", json=_data)
+        response = client.post("/books", json=_data, headers=superadmin_headers)
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
@@ -110,7 +114,7 @@ class TestCreateBook:
         assert data['detail'][0]['type'] == 'string_too_short'
         assert data['detail'][0]['msg'] == 'String should have at least 1 character'
 
-    def test_create_book_not_exist_author(self, client):
+    def test_create_book_not_exist_author(self, client, superadmin_headers)->None:
         """Создание книги с несуществующим автором (должна быть ошибка)"""
 
         _data = {
@@ -118,10 +122,41 @@ class TestCreateBook:
             "author_id": 99999,
         }
 
-        response = client.post("/books", json=_data)
+        response = client.post("/books", json=_data, headers=superadmin_headers)
 
         # assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
         data = response.json()
-        # print(data)
+
         assert data['detail'] == 'Author with id 99999 not found'
+
+    def test_not_perm(self, client, create_author, create_user, auth_header)->None:
+        user = create_user(permissions=[Permissions.BOOK_SHOW.value])
+        header = auth_header(user)
+
+        author = create_author()
+
+        _data = {
+            "title": "test title",
+            "description": "test description",
+            "page": 23,
+            "is_available": True,
+            "author_id": author.id,
+        }
+
+        response = client.post("/books", json=_data, headers=header)
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_not_auth(self, client, create_author, create_user)->None:
+        author = create_author()
+
+        _data = {
+            "title": "test title",
+            "description": "test description",
+            "page": 23,
+            "is_available": True,
+            "author_id": author.id,
+        }
+
+        response = client.post("/books", json=_data)
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED

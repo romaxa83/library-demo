@@ -1,7 +1,7 @@
 from datetime import datetime
-
+from fastapi import status
 from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, selectinload, joinedload
 
 from src.books.exceptions import AuthorNotFoundError, BookNotFoundError
 from src.books.models import Author, Book
@@ -156,7 +156,9 @@ class BookService:
 
     def get_author_by_id(self, author_id: int) -> Author:
         """Получить автора по ID"""
-        stmt = select(Author).where(Author.id == author_id)
+        stmt = (select(Author)
+                .options(joinedload(Author.books))
+                .where(Author.id == author_id))
         model = self.session.scalar(stmt)
         if not model or model.deleted_at is not None:
             raise AuthorNotFoundError(author_id)

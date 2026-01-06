@@ -1,7 +1,6 @@
 import sys
 import os
 from pathlib import Path
-from faker import Faker
 
 # Добавляем корневую директорию проекта в sys.path
 project_root = Path(__file__).parent.parent
@@ -15,9 +14,8 @@ from alembic.config import Config as AlembicConfig
 from alembic import command
 
 from src.config import Config, BASE_DIR
-from src.database import Base
+from src.database import Base, get_db
 from src.main import app
-from src.books import dependencies
 from dotenv import load_dotenv
 
 # Загружаем тестовый конфиг принудительно в самом начале
@@ -27,9 +25,6 @@ config = Config()
 
 @pytest.fixture(scope="session")
 def test_database_url():
-
-    print("00000000000")
-
     """Возвращает URL тестовой БД"""
     return config.db.url
 
@@ -108,14 +103,14 @@ def db_session(engine):
 def client(db_session):
     """Создает TestClient с переопределённой зависимостью get_session"""
 
-    def override_get_session():
+    def override_get_db():
         try:
             yield db_session
         finally:
             pass
 
     # Переопределяем get_session, а не get_db
-    app.dependency_overrides[dependencies.get_session] = override_get_session
+    app.dependency_overrides[get_db] = override_get_db
 
     yield TestClient(app)
 
