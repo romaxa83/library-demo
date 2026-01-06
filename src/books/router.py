@@ -1,5 +1,8 @@
-from fastapi import APIRouter, Query, status
+from typing import Annotated
+from fastapi import APIRouter, Query, status, Depends
 
+from src.rbac.dependencies import PermissionRequired
+from src.rbac.permissions import Permissions
 from src.books.dependencies import BookServiceDep
 from src.books.schemas import (
     AuthorCreate,
@@ -13,12 +16,8 @@ from src.books.schemas import (
     BookUpdate,
     BookFilterSchema
 )
+from src.users.models import User
 from src.utils.pagination import PaginatedResponse, PaginationHelper
-
-# router = APIRouter(
-#     prefix="/books",
-#     tags=["Books"]
-# )
 
 router = APIRouter()
 
@@ -32,6 +31,7 @@ router = APIRouter()
 )
 async def get_authors(
     service: BookServiceDep,
+    user: Annotated[User, Depends(PermissionRequired(Permissions.AUTHOR_LIST))],
     skip: int = Query(0, ge=0, description="Количество пропускаемых записей"),
     limit: int = Query(10, ge=1, le=100, description="Максимальное количество записей"),
     search: str | None = Query(None, description="Поиск по имени автора"),
@@ -39,6 +39,7 @@ async def get_authors(
     sort_by: str = Query("name", description="Поле для сортировки (name)"),
     sort_order: str = Query("asc", description="Порядок сортировки (asc, desc)"),
 ):
+
     filters = AuthorFilterSchema(
         skip=skip,
         limit=limit,
@@ -56,7 +57,11 @@ async def get_authors(
 @router.get(
     "/authors/{author_id}", summary="Получить автора по ID", tags=["Authors"],
 )
-async def get_author(author_id: int, service: BookServiceDep):
+async def get_author(
+    author_id: int,
+    service: BookServiceDep,
+    user: Annotated[User, Depends(PermissionRequired(Permissions.AUTHOR_SHOW))]
+):
     """Получить автора по ID"""
     return service.get_author_by_id(author_id)
 
@@ -68,13 +73,22 @@ async def get_author(author_id: int, service: BookServiceDep):
     tags=["Authors"],
     status_code=status.HTTP_201_CREATED,
 )
-async def create_authors(data: AuthorCreate, service: BookServiceDep):
+async def create_authors(
+    data: AuthorCreate,
+    service: BookServiceDep,
+    user: Annotated[User, Depends(PermissionRequired(Permissions.AUTHOR_CREATE))]
+):
     """Создать новую книгу"""
     return service.create_author(data)
 
 
 @router.patch("/authors/{author_id}", summary="Обновить автора", tags=["Authors"], response_model=AuthorDetailResponse)
-async def update_authors(author_id: int, data: AuthorUpdate, service: BookServiceDep):
+async def update_authors(
+    author_id: int,
+    data: AuthorUpdate,
+    service: BookServiceDep,
+    user: Annotated[User, Depends(PermissionRequired(Permissions.AUTHOR_UPDATE))]
+):
     """Обновить книгу"""
     return service.update_author(author_id, data)
 
@@ -85,7 +99,11 @@ async def update_authors(author_id: int, data: AuthorUpdate, service: BookServic
     tags=["Authors"],
     status_code=status.HTTP_204_NO_CONTENT,
 )
-async def delete_author(author_id: int, service: BookServiceDep):
+async def delete_author(
+    author_id: int,
+    service: BookServiceDep,
+    user: Annotated[User, Depends(PermissionRequired(Permissions.AUTHOR_DELETE))]
+):
     """Удалить автора (soft delete)"""
     service.delete_author(author_id)
 
@@ -96,7 +114,11 @@ async def delete_author(author_id: int, service: BookServiceDep):
     summary="Восстановить удалённого автора",
     response_model=AuthorDetailResponse,
 )
-async def restore_author(author_id: int, service: BookServiceDep):
+async def restore_author(
+    author_id: int,
+    service: BookServiceDep,
+    user: Annotated[User, Depends(PermissionRequired(Permissions.AUTHOR_RESTORE))]
+):
     """Восстановить удалённого автора"""
     return service.restore_author(author_id)
 
@@ -107,7 +129,11 @@ async def restore_author(author_id: int, service: BookServiceDep):
     summary="Полностью удалить автора из БД",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-async def force_delete_author(author_id: int, service: BookServiceDep):
+async def force_delete_author(
+    author_id: int,
+    service: BookServiceDep,
+    user: Annotated[User, Depends(PermissionRequired(Permissions.AUTHOR_FORCE_DELETE))]
+):
     """
     Полностью удалить автора из БД.
     Можно использовать только для уже удалённых авторов (soft-deleted).
@@ -128,6 +154,7 @@ async def force_delete_author(author_id: int, service: BookServiceDep):
 )
 async def get_books(
     service: BookServiceDep,
+    user: Annotated[User, Depends(PermissionRequired(Permissions.BOOK_LIST))],
     skip: int = Query(0, ge=0, description="Количество пропускаемых записей"),
     limit: int = Query(10, ge=1, le=100, description="Максимальное количество записей"),
     search: str | None = Query(None, description="Поиск по названию"),
@@ -160,7 +187,11 @@ async def get_books(
     summary="Получить книгу по ID",
     response_model=BookDetailResponse
 )
-async def get_book(book_id: int, service: BookServiceDep):
+async def get_book(
+    book_id: int,
+    service: BookServiceDep,
+    user: Annotated[User, Depends(PermissionRequired(Permissions.BOOK_SHOW))]
+):
     """Получить книгу по ID"""
     return service.get_by_id(book_id)
 
@@ -172,18 +203,31 @@ async def get_book(book_id: int, service: BookServiceDep):
     summary="Создать новую книгу",
     status_code=status.HTTP_201_CREATED,
 )
-async def create_book(data: BookCreate, service: BookServiceDep):
+async def create_book(
+    data: BookCreate,
+    service: BookServiceDep,
+    user: Annotated[User, Depends(PermissionRequired(Permissions.BOOK_CREATE))]
+):
     """Создать новую книгу"""
     return service.create(data)
 
 
 @router.patch("/books/{book_id}", tags=["Books"], summary="Обновить книгу", response_model=BookResponse)
-async def update_book(book_id: int, data: BookUpdate, service: BookServiceDep):
+async def update_book(
+    book_id: int,
+    data: BookUpdate,
+    service: BookServiceDep,
+    user: Annotated[User, Depends(PermissionRequired(Permissions.BOOK_UPDATE))]
+):
     """Обновить книгу"""
     return service.update(book_id, data)
 
 
 @router.delete("/books/{book_id}", tags=["Books"], summary="Удалить книгу", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_book(book_id: int, service: BookServiceDep):
+async def delete_book(
+    book_id: int,
+    service: BookServiceDep,
+    user: Annotated[User, Depends(PermissionRequired(Permissions.BOOK_DELETE))]
+):
     """Удалить книгу"""
     service.delete(book_id)

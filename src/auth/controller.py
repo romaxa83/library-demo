@@ -3,7 +3,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jwt import InvalidTokenError
 from loguru import logger
 
-from src.auth.dependencies import AuthServiceDep
+from src.auth.dependencies import AuthServiceDep, CurrentUserDep
 from src.auth.exceptions import UnauthorizedError
 from src.users.schemas import (
     UserRegister,
@@ -59,16 +59,10 @@ def login(data: UserLogin, service: AuthServiceDep) -> TokenResponse:
     response_model=UserDetailResponse
 )
 def current_user(
-        service: AuthServiceDep,
-        credentials: HTTPAuthorizationCredentials = Depends(http_bearer),
+    user: CurrentUserDep,
 ) -> UserDetailResponse:
     """Получение текущего авторизованного пользователя"""
-    token = credentials.credentials
-
-    try:
-        return service.current_user(token)
-    except InvalidTokenError as err:
-        raise UnauthorizedError(detail=str(err))
+    return user
 
 @router.post(
     "/refresh-tokens",

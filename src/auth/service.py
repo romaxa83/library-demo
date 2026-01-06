@@ -12,6 +12,8 @@ from src.notifications.send_email import (
 from src.auth import utils as auth_utils
 from src.users.dependencies import UserServiceDep
 from src.users.models import User
+from src.rbac.models import Role
+from src.rbac.permissions import DefaultRole
 from datetime import datetime, timezone
 from src.users.schemas import (
     UserRegister,
@@ -43,11 +45,14 @@ class AuthService:
     async def register(self, data: UserRegister) -> User:
         """Зарегистрировать нового пользователя"""
 
+        role = self.session.scalar(select(Role).where(Role.alias == DefaultRole.USER.value))
+        if not role:
+            raise RoleNotFoundByAliasError(DefaultRole.USER.value)
+
         model = User(**data.model_dump())
 
-        # print(self.session, model)
-
         model.password = auth_utils.hash_password(data.password)
+        model.role_id = role.id
 
         self.session.add(model)
         self.session.commit()
@@ -64,8 +69,6 @@ class AuthService:
 
     def login(self, data: UserLogin) -> TokenResponse:
         # user = self.user_service.find_by_email(self, email=data.email)
-
-
 
         q = select(User).where(User.email == data.email)
         user = self.session.scalar(q)
@@ -140,7 +143,7 @@ class AuthService:
             ):
             raise UnauthorizedError(detail="Invalid credentials")
 
-        return self.user_service.find_by_id(self, id=int(payload.get("sub")))
+        return user
 
     async def verify_email(self, token: str)-> SuccessResponse:
         payload = auth_utils.decode_jwt(token=token)

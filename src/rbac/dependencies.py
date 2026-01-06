@@ -1,23 +1,22 @@
-from typing import Annotated, Generator
+from typing import Annotated
 from fastapi import Depends
-from sqlalchemy.orm import Session
+
+from src.auth.dependencies import CurrentUserDep
+from src.database import DbSessionDep
+from src.rbac.exceptions import ForbiddenError
+from src.rbac.permissions import Permissions
 from src.rbac.service import RbacService
-from src import database
 
-def get_session() -> Generator[Session, None, None]:
-    """Получить сессию базы данных"""
-    # SessionLocal будет инициализирован в init_db()
-    if database.SessionLocal is None:
-        database.init_db()
-
-    session = database.SessionLocal()
-    try:
-        yield session
-    finally:
-        session.close()
-
-
-def get_service(session: Annotated[Session, Depends(get_session)]) -> RbacService:
+def get_service(session: DbSessionDep) -> RbacService:
     return RbacService(session)
 
 RbacServiceDep = Annotated[RbacService, Depends(get_service)]
+
+class PermissionRequired:
+    def __init__(self, permission: Permissions):
+        self.permission = permission.value
+
+    def __call__(self, user: CurrentUserDep):
+        if not user.has_permission(self.permission):
+            raise ForbiddenError(detail=f"Недостаточно прав: требуется {self.permission}")
+        return user

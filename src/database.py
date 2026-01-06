@@ -1,6 +1,7 @@
 from typing import Annotated, Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker, Session
+from fastapi import Depends
 
 from src.config import Config
 
@@ -32,7 +33,6 @@ def init_db(db_url: str = None):
 
     return engine, SessionLocal
 
-
 def get_db():
     """Получить сессию БД"""
     if SessionLocal is None:
@@ -43,3 +43,5 @@ def get_db():
         yield db
     finally:
         db.close()
+
+DbSessionDep = Annotated[Session, Depends(get_db)]

@@ -1,4 +1,8 @@
-from fastapi import APIRouter, status
+from typing import Annotated
+from fastapi import APIRouter, status, Depends
+
+from src.rbac.dependencies import PermissionRequired
+from src.rbac.permissions import Permissions
 
 from src.core.schemas.responses import ResponseList
 from src.rbac.dependencies import RbacServiceDep
@@ -8,9 +12,8 @@ from src.rbac.schemas import (
     RoleUpdate,
     PermissionsDetailResponse
 )
-from src.rbac.models import (
-    Role,
-)
+from src.rbac.models import Role
+from src.users.models import User
 
 router = APIRouter(
     tags=["RBAC"]
@@ -21,7 +24,10 @@ router = APIRouter(
     summary="Список ролей",
     response_model=ResponseList[RoleDetailResponse],
 )
-async def get_roles(service: RbacServiceDep)->ResponseList[RoleDetailResponse]:
+async def get_roles(
+    service: RbacServiceDep,
+    user: Annotated[User, Depends(PermissionRequired(Permissions.ROLE_LIST))]
+)->ResponseList[RoleDetailResponse]:
     data = service.get_all_roles()
 
     return ResponseList(data=data)
@@ -31,7 +37,11 @@ async def get_roles(service: RbacServiceDep)->ResponseList[RoleDetailResponse]:
     response_model=RoleDetailResponse,
     summary="Получить роль по ID",
 )
-async def get_role(role_id: int, service: RbacServiceDep)->Role:
+async def get_role(
+    role_id: int,
+    service: RbacServiceDep,
+    user: Annotated[User, Depends(PermissionRequired(Permissions.ROLE_SHOW))]
+)->Role:
     return service.get_by_id(role_id)
 
 @router.post(
@@ -40,7 +50,11 @@ async def get_role(role_id: int, service: RbacServiceDep)->Role:
     summary="Создать новую роль",
     status_code=status.HTTP_201_CREATED,
 )
-async def create_role(data: RoleCreate, service: RbacServiceDep)->Role:
+async def create_role(
+    data: RoleCreate,
+    service: RbacServiceDep,
+    user: Annotated[User, Depends(PermissionRequired(Permissions.ROLE_CREATE))]
+)->Role:
     return await service.create_role(data)
 
 @router.patch(
@@ -51,7 +65,8 @@ async def create_role(data: RoleCreate, service: RbacServiceDep)->Role:
 async def update_role(
     role_id: int,
     data: RoleUpdate,
-    service: RbacServiceDep
+    service: RbacServiceDep,
+    user: Annotated[User, Depends(PermissionRequired(Permissions.ROLE_UPDATE))]
 ):
     return service.update_role(role_id, data)
 
@@ -60,7 +75,11 @@ async def update_role(
     summary="Удалить роль",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-async def delete_role(role_id: int, service: RbacServiceDep)->None:
+async def delete_role(
+    role_id: int,
+    service: RbacServiceDep,
+    user: Annotated[User, Depends(PermissionRequired(Permissions.ROLE_DELETE))]
+)->None:
     return service.delete_role(role_id)
 
 @router.get(
@@ -68,6 +87,9 @@ async def delete_role(role_id: int, service: RbacServiceDep)->None:
     summary="Список разрешений",
     response_model=ResponseList[PermissionsDetailResponse]
 )
-async def get_permissions(service: RbacServiceDep):
+async def get_permissions(
+    service: RbacServiceDep,
+user: Annotated[User, Depends(PermissionRequired(Permissions.PERMISSION_LIST))]
+):
     data = service.get_all_permissions()
     return ResponseList(data=data)

@@ -5,12 +5,13 @@ class DefaultRole(Enum):
     SUPERADMIN = "superadmin"
 
 class PermissionGroup(Enum):
-    USER   = "user"
-    ROLE   = "role"
-    AUTHOR = "author"
-    BOOK   = "book"
+    USER       = "user"
+    ROLE       = "role"
+    AUTHOR     = "author"
+    BOOK       = "book"
+    PERMISSION = "permission"
 
-class Permissions(Enum):
+class  Permissions(Enum):
     # Action by user
     USER_SHOW   = f"{PermissionGroup.USER.value}.show"
     USER_LIST   = f"{PermissionGroup.USER.value}.list"
@@ -19,11 +20,12 @@ class Permissions(Enum):
     USER_DELETE = f"{PermissionGroup.USER.value}.delete"
 
     # Action by role
-    ROLE_SHOW   = f"{PermissionGroup.ROLE.value}.show"
-    ROLE_LIST   = f"{PermissionGroup.ROLE.value}.list"
-    ROLE_CREATE = f"{PermissionGroup.ROLE.value}.create"
-    ROLE_UPDATE = f"{PermissionGroup.ROLE.value}.update"
-    ROLE_DELETE = f"{PermissionGroup.ROLE.value}.delete"
+    ROLE_SHOW       = f"{PermissionGroup.ROLE.value}.show"
+    ROLE_LIST       = f"{PermissionGroup.ROLE.value}.list"
+    ROLE_CREATE     = f"{PermissionGroup.ROLE.value}.create"
+    ROLE_UPDATE     = f"{PermissionGroup.ROLE.value}.update"
+    ROLE_DELETE     = f"{PermissionGroup.ROLE.value}.delete"
+    PERMISSION_LIST = f"{PermissionGroup.PERMISSION.value}.list"
 
     # Action by author
     AUTHOR_SHOW         = f"{PermissionGroup.AUTHOR.value}.show"
@@ -58,6 +60,9 @@ def get_permissions_for_seed():
             {"alias": Permissions.ROLE_UPDATE.value, "description": "Редактировать роль"},
             {"alias": Permissions.ROLE_DELETE.value, "description": "Удалить роль"},
         ],
+        PermissionGroup.PERMISSION.value: [
+            {"alias": Permissions.PERMISSION_LIST.value, "description": "Просмотр разрешений"},
+        ],
         PermissionGroup.AUTHOR.value: [
             {"alias": Permissions.AUTHOR_SHOW.value, "description": "Просмотр автора"},
             {"alias": Permissions.AUTHOR_LIST.value, "description": "Просмотр авторов"},
@@ -79,9 +84,9 @@ def get_permissions_for_seed():
 def get_permissions_for_roles():
     return {
         DefaultRole.USER.value: [
-            Permissions.USER_SHOW.value,
-            Permissions.ROLE_SHOW.value,
             Permissions.AUTHOR_SHOW.value,
-            Permissions.BOOK_SHOW.value
+            Permissions.AUTHOR_LIST.value,
+            Permissions.BOOK_SHOW.value,
+            Permissions.BOOK_LIST.value
         ],
     }

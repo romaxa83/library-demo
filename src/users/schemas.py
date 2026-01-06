@@ -1,6 +1,9 @@
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
 from datetime import datetime
 
+from src.rbac.schemas import RoleDetailResponse
+
+
 class UserBase(BaseModel):
     model_config = ConfigDict(from_attributes=True, strict=True)
 
@@ -28,4 +31,5 @@ class UserDetailResponse(UserBase):
     is_active: bool
     email_verify_at: datetime | None
     password: bytes = Field(exclude=True)
+    role: RoleDetailResponse
 

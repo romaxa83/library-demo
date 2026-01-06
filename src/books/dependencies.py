@@ -1,30 +1,13 @@
-from typing import Annotated, Generator
+from typing import Annotated
 
 from fastapi import Depends
-from sqlalchemy.orm import Session
 
 from src.books.service import BookService
-from src import database
+from src.database import DbSessionDep
 
-
-def get_session() -> Generator[Session, None, None]:
-    """Получить сессию базы данных"""
-    # SessionLocal будет инициализирован в init_db()
-    print("DB")
-    if database.SessionLocal is None:
-        database.init_db()
-
-    session = database.SessionLocal()
-    try:
-        yield session
-    finally:
-        session.close()
-
-
-def get_book_service(session: Annotated[Session, Depends(get_session)]) -> BookService:
+def get_book_service(session: DbSessionDep) -> BookService:
     """Получить сервис книг"""
     return BookService(session)
-
 
 # Type alias для удобства
 BookServiceDep = Annotated[BookService, Depends(get_book_service)]

@@ -2,6 +2,8 @@ from sqlalchemy import String, Text, ForeignKey, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database import Base
+from src.rbac.permissions import DefaultRole
+
 
 class Role(Base):
     __tablename__ = "rbac_roles"
@@ -13,6 +15,10 @@ class Role(Base):
         secondary="rbac_role_permission",
         back_populates="roles",
     )
+
+    @property
+    def is_superadmin(self) -> bool:
+        return self.alias == DefaultRole.SUPERADMIN.value
 
 class Permission(Base):
     __tablename__ = "rbac_permissions"

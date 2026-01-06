@@ -1,6 +1,7 @@
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
+from src.rbac.models import Role
 from src.users.exceptions import UserNotFoundError
 from src.users.models import User
 
@@ -26,7 +27,11 @@ class UserService:
         return model
 
     def find_by_id(self, id: str|int) -> User | None:
-        stmt = select(User).where(User.id == id)
+        stmt = (select(User)
+                .options(
+                    joinedload(User.role).joinedload(Role.permissions)
+                )
+                .where(User.id == id))
         model = self.session.scalar(stmt)
 
         return model
