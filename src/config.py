@@ -57,6 +57,21 @@ class MailConfig(BaseSettings):
     from_address: str = "admin@gmail.com"
     from_name: str | None = None
 
+class CORSConfig(BaseSettings):
+    """Конфигурация CORS"""
+    model_config = SettingsConfigDict(
+        env_file=".env", env_prefix="CORS_", extra="ignore"
+    )
+    # значение по умолчанию
+    allow_origins: list[str] = [
+        "http://localhost",
+        "http://localhost:8000",
+    ]
+    allow_methods: list[str] = ["*"]
+    allow_headers: list[str] = ["*"]
+    allow_credentials: bool = False
+    max_age: int = 600  # max age in seconds
+
 class DatabaseConfig(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="DB_", extra="ignore"
@@ -79,3 +94,4 @@ class Config(BaseSettings):
     auth: AuthJWTConfig = AuthJWTConfig()
     email: EmailConfig = EmailConfig()
     mail: MailConfig = MailConfig()
+    cors: CORSConfig = CORSConfig()

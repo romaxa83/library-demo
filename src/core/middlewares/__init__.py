@@ -1,0 +1,2 @@
+from src.core.middlewares.middlewares import register_middlewares
+from src.core.middlewares.requests_count import requests_count_middleware_dispatch
