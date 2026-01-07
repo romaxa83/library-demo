@@ -1,27 +1,60 @@
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
+
 import uvicorn
 from fastapi import FastAPI
 import os
 import signal
+
+from fastapi.responses import ORJSONResponse
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+from redis.asyncio import Redis
+
 from src.books.router import router as books_router
 from src.auth.controller import router as auth_router
 from src.rbac.controller import router as rbac_router
-from src.config import Config
-from src.database import init_db
+from src.config import config
+from src.database import init_db, dispose
 from src.logger import init_logger
 from src.core.errors.errors_handlers import register_errors_handlers
 from src.core.middlewares.middlewares import register_middlewares
 from src.core.middlewares.requests_count import requests_count_middleware_dispatch
 
-config = Config()
 
-# Инициализируем БД с конфигом реальной БД
-init_db(config.db.url)
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    # startup
+    # Инициализируем БД с конфигом реальной БД
+    init_db(config.db.url)
+    init_logger()
+
+    redis = Redis(
+        host=config.redis.host,
+        port=config.redis.port,
+        # password=config.redis.password,
+        # encoding="utf8",
+        # decode_responses=True
+    )
+
+    # Проверяем соединение
+    await redis.ping()
+
+    FastAPICache.init(
+        RedisBackend(redis),
+        prefix=config.cache.prefix,
+    )
+
+    yield
+    # shutdown
+    await dispose()
+    # await redis.close()
 
 app = FastAPI(
     title=config.app.name,
+    default_response_class=ORJSONResponse,
+    lifespan=lifespan,
 )
-
-init_logger()
 
 register_errors_handlers(app)
 register_middlewares(app)

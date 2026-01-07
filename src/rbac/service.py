@@ -1,10 +1,12 @@
 from typing import Sequence
 
+from fastapi_cache import FastAPICache
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from loguru import logger
 
+from src.config import config
 from src.rbac.permissions import (
     DefaultRole,
     get_permissions_for_seed,
@@ -19,7 +21,7 @@ from src.rbac.schemas import (
     RoleCreate,
     RoleUpdate,
     PermissionCreate,
-    PermissionUpdate,
+    PermissionUpdate, PermissionsDetailResponse,
 )
 from src.rbac.models import Role, Permission
 import  asyncio
@@ -140,11 +142,13 @@ class RbacService:
         self.session.delete(model)
         self.session.commit()
 
-    def get_all_permissions(self) -> Sequence[Permission]:
+    def get_all_permissions(self) -> Sequence[PermissionsDetailResponse]:
 
         stmt = select(Permission)
 
-        return self.session.scalars(stmt).all()
+        permissions = self.session.scalars(stmt).all()
+
+        return [PermissionsDetailResponse.model_validate(p) for p in permissions]
 
     async def create_permission(self, data: PermissionCreate) -> Permission:
         model = Permission(**data.model_dump())
@@ -186,6 +190,8 @@ class RbacService:
                 self.session.commit()
 
     def insert_or_update_permission(self) -> None:
+        # FastAPICache.clear(namespace=config.cache.namespace.permissions)
+
         for group, perms in get_permissions_for_seed().items():
             for perm in perms:
                 if model := self.find_permission_by_alias(alias=perm['alias']):

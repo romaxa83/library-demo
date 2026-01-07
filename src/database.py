@@ -44,4 +44,11 @@ def get_db():
     finally:
         db.close()
 
+async def dispose() -> None:
+    """Закрыть все соединения с БД"""
+    global engine
+    if engine is not None:
+        await engine.dispose()
+        engine = None
+
 DbSessionDep = Annotated[Session, Depends(get_db)]

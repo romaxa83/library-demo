@@ -39,6 +39,24 @@ services:
     volumes:
       - /var/lib/postgresql/data
 
+  redis:
+    image: redis:alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    container_name: ${APP_NAME}__redis
+    hostname: ${APP_NAME}__redis
+    platform: linux/arm64
+    ports:
+      - ${REDIS_PORT}:${REDIS_PORT}
+    volumes:
+      - redis_data:/data
+#    command: redis-server --requirepass ${REDIS_PASSWORD} # раскомментировать если нужно чтоб пароль был обязательным
+    healthcheck:
+      test: redis-cli ping
+      interval: 5s
+      timeout: 10s
+      retries: 20
+
   mailer:
     image: axllent/mailpit:latest
     container_name: ${APP_NAME}__mailer
@@ -52,3 +70,6 @@ volumes:
   db_data:
     driver: local
     name: ${APP_NAME}_db_data
+  redis_data:
+    driver: local
+    name: ${APP_NAME}_redis_data

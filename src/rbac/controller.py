@@ -1,6 +1,7 @@
-from typing import Annotated
-from fastapi import APIRouter, status, Depends
-
+from typing import Annotated, Any, Callable, Dict, Optional, Tuple
+from fastapi import APIRouter, status, Depends, Request, Response
+from fastapi_cache.decorator import cache
+import hashlib
 from src.rbac.dependencies import PermissionRequired
 from src.rbac.permissions import Permissions
 
@@ -13,7 +14,9 @@ from src.rbac.schemas import (
     PermissionsDetailResponse
 )
 from src.rbac.models import Role
+from src.rbac.service import RbacService
 from src.users.models import User
+from src.config import config
 
 router = APIRouter(
     tags=["RBAC"]
@@ -82,14 +85,43 @@ async def delete_role(
 )->None:
     return service.delete_role(role_id)
 
+def perm_list_key_builder(
+    func: Callable[..., Any],
+    namespace: str,
+    *,
+    request: Optional[Request] = None,
+    response: Optional[Response] = None,
+    args: Tuple[Any, ...],
+    kwargs: Dict[str, Any],
+) -> str:
+
+    # убираем обьекты из kwards так как они постоянно имеют другой адрес из-за чего ключ для кеша всегда разные
+    exclude_types = (RbacService,User)
+    # exclude_types = ()
+    cache_kw = {}
+    for name, value in kwargs.items():
+        if isinstance(value, exclude_types):
+            continue
+        cache_kw[name] = value
+
+    cache_key = hashlib.md5(  # noqa: S324
+        f"{func.__module__}:{func.__name__}:{args}:{cache_kw}".encode()
+    ).hexdigest()
+    return f"{namespace}:{cache_key}"
+
 @router.get(
     "/permissions",
     summary="Список разрешений",
     response_model=ResponseList[PermissionsDetailResponse]
 )
-async def get_permissions(
+@cache(
+    expire=60*10,
+    key_builder=perm_list_key_builder,
+    namespace=config.cache.namespace.permissions,
+)
+def get_permissions(
     service: RbacServiceDep,
-user: Annotated[User, Depends(PermissionRequired(Permissions.PERMISSION_LIST))]
-):
+    user: Annotated[User, Depends(PermissionRequired(Permissions.PERMISSION_LIST))]
+)->ResponseList[PermissionsDetailResponse]:
     data = service.get_all_permissions()
     return ResponseList(data=data)

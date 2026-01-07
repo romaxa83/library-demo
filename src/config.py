@@ -87,6 +87,32 @@ class DatabaseConfig(BaseSettings):
     def url(self) -> str:
         return f"postgresql+psycopg2://{self.username}:{self.password}@{self.host}:{self.port}/{self.database}"
 
+class RedisDB(BaseSettings):
+    cache: int = 0
+
+class RedisConfig(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env", env_prefix="REDIS_", extra="ignore"
+    )
+    # значение по умолчанию
+    host: str = "localhost"
+    port: int = 6379
+    password: str = ""
+    username: str = "root"
+    db: RedisDB = RedisDB()
+
+    # redis://:mysecretpassword@localhost:6379/0
+    @property
+    def url(self) -> str:
+        return f"redis://{self.username}:{self.password}@{self.host}:{self.port}/{self.db.cache}"
+
+class CacheNamespace(BaseSettings):
+    permissions: str = "permissions"
+
+class CacheConfig(BaseSettings):
+    prefix: str = "app-cache"
+    namespace: CacheNamespace = CacheNamespace()
+
 class Config(BaseSettings):
     app: AppConfig = AppConfig()
     db: DatabaseConfig = DatabaseConfig()
@@ -95,3 +121,7 @@ class Config(BaseSettings):
     email: EmailConfig = EmailConfig()
     mail: MailConfig = MailConfig()
     cors: CORSConfig = CORSConfig()
+    redis: RedisConfig = RedisConfig()
+    cache: CacheConfig = CacheConfig()
+
+config = Config()
