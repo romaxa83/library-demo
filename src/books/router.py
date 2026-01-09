@@ -16,6 +16,7 @@ from src.books.schemas import (
     BookUpdate,
     BookFilterSchema
 )
+from src.books.models import Book, Author
 from src.users.models import User
 from src.utils.pagination import PaginatedResponse, PaginationHelper
 
@@ -38,8 +39,7 @@ async def get_authors(
     deleted: str = Query("active", description="Фильтр по статусу удаления (active, deleted, all)"),
     sort_by: str = Query("name", description="Поле для сортировки (name)"),
     sort_order: str = Query("asc", description="Порядок сортировки (asc, desc)"),
-):
-
+)->list[Author]:
     filters = AuthorFilterSchema(
         skip=skip,
         limit=limit,
@@ -49,21 +49,24 @@ async def get_authors(
         sort_order=sort_order
     )
 
-    authors, total = service.get_all_authors(filters=filters)
+    authors, total = await service.get_all_authors(filters=filters)
 
     return PaginationHelper.build_paginated_response(data=authors, total=total, skip=skip, limit=limit)
 
 
 @router.get(
-    "/authors/{author_id}", summary="Получить автора по ID", tags=["Authors"],
+    "/authors/{author_id}",
+    summary="Получить автора по ID",
+    tags=["Authors"],
+    response_model=AuthorDetailResponse
 )
 async def get_author(
     author_id: int,
     service: BookServiceDep,
     user: Annotated[User, Depends(PermissionRequired(Permissions.AUTHOR_SHOW))]
-):
+)->Author:
     """Получить автора по ID"""
-    return service.get_author_by_id(author_id)
+    return await service.get_author_by_id(author_id)
 
 
 @router.post(
@@ -77,9 +80,9 @@ async def create_authors(
     data: AuthorCreate,
     service: BookServiceDep,
     user: Annotated[User, Depends(PermissionRequired(Permissions.AUTHOR_CREATE))]
-):
+)->Author:
     """Создать новую книгу"""
-    return service.create_author(data)
+    return await service.create_author(data)
 
 
 @router.patch("/authors/{author_id}", summary="Обновить автора", tags=["Authors"], response_model=AuthorDetailResponse)
@@ -88,9 +91,9 @@ async def update_authors(
     data: AuthorUpdate,
     service: BookServiceDep,
     user: Annotated[User, Depends(PermissionRequired(Permissions.AUTHOR_UPDATE))]
-):
+)->Author:
     """Обновить книгу"""
-    return service.update_author(author_id, data)
+    return await service.update_author(author_id, data)
 
 
 @router.delete(
@@ -103,9 +106,9 @@ async def delete_author(
     author_id: int,
     service: BookServiceDep,
     user: Annotated[User, Depends(PermissionRequired(Permissions.AUTHOR_DELETE))]
-):
+)->None:
     """Удалить автора (soft delete)"""
-    service.delete_author(author_id)
+    await service.delete_author(author_id)
 
 
 @router.patch(
@@ -118,9 +121,9 @@ async def restore_author(
     author_id: int,
     service: BookServiceDep,
     user: Annotated[User, Depends(PermissionRequired(Permissions.AUTHOR_RESTORE))]
-):
+)->Author:
     """Восстановить удалённого автора"""
-    return service.restore_author(author_id)
+    return await service.restore_author(author_id)
 
 
 @router.delete(
@@ -133,12 +136,12 @@ async def force_delete_author(
     author_id: int,
     service: BookServiceDep,
     user: Annotated[User, Depends(PermissionRequired(Permissions.AUTHOR_FORCE_DELETE))]
-):
+)->None:
     """
     Полностью удалить автора из БД.
     Можно использовать только для уже удалённых авторов (soft-deleted).
     """
-    service.force_delete_author(author_id)
+    await service.force_delete_author(author_id)
 
 
 # ===============================================
@@ -176,7 +179,7 @@ async def get_books(
         sort_order=sort_order
     )
 
-    recs, total = service.get_all_books(filters=filters)
+    recs, total = await service.get_all_books(filters=filters)
 
     return PaginationHelper.build_paginated_response(data=recs, total=total, skip=skip, limit=limit)
 
@@ -191,9 +194,9 @@ async def get_book(
     book_id: int,
     service: BookServiceDep,
     user: Annotated[User, Depends(PermissionRequired(Permissions.BOOK_SHOW))]
-):
+)->Book:
     """Получить книгу по ID"""
-    return service.get_by_id(book_id)
+    return await service.get_by_id(book_id)
 
 
 @router.post(
@@ -207,9 +210,9 @@ async def create_book(
     data: BookCreate,
     service: BookServiceDep,
     user: Annotated[User, Depends(PermissionRequired(Permissions.BOOK_CREATE))]
-):
+)->Book:
     """Создать новую книгу"""
-    return service.create(data)
+    return await service.create(data)
 
 
 @router.patch("/books/{book_id}", tags=["Books"], summary="Обновить книгу", response_model=BookResponse)
@@ -218,9 +221,9 @@ async def update_book(
     data: BookUpdate,
     service: BookServiceDep,
     user: Annotated[User, Depends(PermissionRequired(Permissions.BOOK_UPDATE))]
-):
+)->Book:
     """Обновить книгу"""
-    return service.update(book_id, data)
+    return await service.update(book_id, data)
 
 
 @router.delete("/books/{book_id}", tags=["Books"], summary="Удалить книгу", status_code=status.HTTP_204_NO_CONTENT)
@@ -228,6 +231,6 @@ async def delete_book(
     book_id: int,
     service: BookServiceDep,
     user: Annotated[User, Depends(PermissionRequired(Permissions.BOOK_DELETE))]
-):
+)->None:
     """Удалить книгу"""
-    service.delete(book_id)
+    await service.delete(book_id)

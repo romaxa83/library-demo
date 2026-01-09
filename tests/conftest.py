@@ -1,19 +1,21 @@
 import sys
 import os
 from pathlib import Path
+import asyncio
+
+from httpx import AsyncClient, ASGITransport
 
 # Добавляем корневую директорию проекта в sys.path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 import pytest
-from sqlalchemy import create_engine, inspect
-from sqlalchemy.orm import sessionmaker
-from fastapi.testclient import TestClient
+import pytest_asyncio
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from alembic.config import Config as AlembicConfig
 from alembic import command
 
-from src.config import Config, BASE_DIR
+from src.config import config, BASE_DIR
 from src.database import Base, get_db
 from src.main import app
 from dotenv import load_dotenv
@@ -21,12 +23,12 @@ from dotenv import load_dotenv
 # Загружаем тестовый конфиг принудительно в самом начале
 load_dotenv(".env.testing", override=True)
 
-config = Config()
-
-@pytest.fixture(scope="session")
-def test_database_url():
-    """Возвращает URL тестовой БД"""
-    return config.db.url
+# @pytest.fixture(scope="session")
+# def event_loop():
+#     """Создает event loop для всей тестовой сессии"""
+#     loop = asyncio.new_event_loop()
+#     yield loop
+#     loop.close()
 
 
 def run_migrations(database_url: str):
@@ -52,67 +54,61 @@ def run_migrations(database_url: str):
         # print("📋 Создаём таблицы вручную через SQLAlchemy...")
         raise
 
-
-@pytest.fixture(scope="session")
-def engine(test_database_url):
-    """Создает engine для тестовой БД и запускает миграции"""
-    engine = create_engine(
-        test_database_url,
+@pytest_asyncio.fixture(scope="function")
+async def test_engine():
+    """Создает асинхронный engine для тестовой БД"""
+    # Убедитесь, что URL в .env.testing начинается с postgresql+asyncpg://
+    engine = create_async_engine(
+        config.db.url,
         echo=False,
         pool_pre_ping=True,
     )
 
-    # Проверяем, есть ли таблицы
-    inspector = inspect(engine)
-    existing_tables = inspector.get_table_names()
-
-    if not existing_tables:
-        # print(f"📋 В тестовой БД нет таблиц. Запускаем миграции...")
-        # Запускаем миграции на тестовую БД
-        run_migrations(test_database_url)
-    else:
-        print(f"✅ В тестовой БД найдены таблицы: {existing_tables}")
-
-    # Дополнительная проверка, что таблицы созданы
-    inspector = inspect(engine)
-    if "authors" not in inspector.get_table_names():
-        # print("❌ Таблица 'authors' не найдена! Пробуем создать вручную...")
-        Base.metadata.create_all(bind=engine)
+    async with engine.begin() as conn:
+        # Создаем таблицы асинхронно
+        await conn.run_sync(Base.metadata.create_all)
 
     yield engine
-
-    # Не удаляем таблицы после тестов, оставляем их для отладки
-    # Base.metadata.drop_all(bind=engine)
+    await engine.dispose()
 
 
-@pytest.fixture(scope="function")
-def db_session(engine):
-    """Создает новую сессию БД для каждого теста"""
-    connection = engine.connect()
-    transaction = connection.begin()
-    session = sessionmaker(autocommit=False, autoflush=False, bind=connection)()
+@pytest_asyncio.fixture(scope="function")
+async def db_session(test_engine):
+    """Создает изолированную сессию через вложенную транзакцию"""
+    connection = await test_engine.connect()
+    # Начинаем внешнюю транзакцию
+    trans = await connection.begin()
 
-    yield session
+    # Создаем сессию, привязанную к этому соединению
+    async_session = AsyncSession(
+        bind=connection,
+        expire_on_commit=False,
+        join_transaction_mode="create_savepoint"  # Магия здесь: commit станет savepoint
+    )
 
-    session.close()
-    transaction.rollback()
-    connection.close()
+    yield async_session
+
+    # Откатываем внешнюю транзакцию - это удалит ВСЕ данные, созданные в тесте
+    await async_session.close()
+    await trans.rollback()
+    await connection.close()
 
 
-@pytest.fixture(scope="function")
-def client(db_session):
-    """Создает TestClient с переопределённой зависимостью get_session"""
+@pytest_asyncio.fixture(scope="function")
+async def client(db_session):
+    """Создает AsyncClient для тестов"""
 
-    def override_get_db():
-        try:
-            yield db_session
-        finally:
-            pass
+    async def override_get_db():
+        yield db_session
 
-    # Переопределяем get_session, а не get_db
     app.dependency_overrides[get_db] = override_get_db
 
-    yield TestClient(app)
+    # Используем AsyncClient с транспортом приложения
+    async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test"
+    ) as ac:
+        yield ac
 
     app.dependency_overrides.clear()
 

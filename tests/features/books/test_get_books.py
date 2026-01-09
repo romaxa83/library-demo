@@ -1,3 +1,4 @@
+import pytest
 from datetime import datetime
 from fastapi import status
 
@@ -7,12 +8,13 @@ from src.rbac.permissions import Permissions
 class TestGetBooks:
     """Тесты для получения списка книг"""
 
-    def test_get_books_empty_list(self, client, create_user, auth_header)->None:
+    @pytest.mark.asyncio
+    async def test_get_books_empty_list(self, client, create_user, auth_header)->None:
         """Получить пустой список книг"""
-        user = create_user(permissions=[Permissions.BOOK_LIST.value])
-        header = auth_header(user)
+        user = await create_user(permissions=[Permissions.BOOK_LIST.value])
+        header = await auth_header(user)
 
-        response = client.get("/books", headers=header)
+        response = await client.get("/books", headers=header)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
 
@@ -24,12 +26,13 @@ class TestGetBooks:
         assert data["meta"]["total_pages"] == 0
         assert data["meta"]["skip"] == 0
 
-    def test_get_books_with_limit(self, client, create_books, superadmin_headers)->None:
+    @pytest.mark.asyncio
+    async def test_get_books_with_limit(self, client, create_books, superadmin_headers)->None:
         """Получить книги, используя лимит"""
 
-        create_books(count=3)
+        await create_books(count=3)
 
-        response = client.get("/books?skip=0&limit=2", headers=superadmin_headers)
+        response = await client.get("/books?skip=0&limit=2", headers=superadmin_headers)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
 
@@ -42,12 +45,13 @@ class TestGetBooks:
         assert data["meta"]["total_pages"] == 2
         assert data["meta"]["skip"] == 0
 
-    def test_get_books_with_skip(self, client, create_books, superadmin_headers)->None:
+    @pytest.mark.asyncio
+    async def test_get_books_with_skip(self, client, create_books, superadmin_headers)->None:
         """Получить книги, используя skip"""
 
-        create_books(3)
+        await create_books(3)
 
-        response = client.get("/books?skip=2&limit=2", headers=superadmin_headers)
+        response = await client.get("/books?skip=2&limit=2", headers=superadmin_headers)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
 
@@ -59,29 +63,31 @@ class TestGetBooks:
         assert data["meta"]["total_pages"] == 2
         assert data["meta"]["skip"] == 2
 
-    def test_get_book_with_search(self, client, create_book, superadmin_headers)->None:
+    @pytest.mark.asyncio
+    async def test_get_book_with_search(self, client, create_book, superadmin_headers)->None:
         """Получить книгу с поиском по названию"""
 
         title = "Good book"
-        model = create_book(title=title)
-        create_book(title="Tester")
+        model = await create_book(title=title)
+        await create_book(title="Tester")
 
-        response = client.get("/books?search=book", headers=superadmin_headers)
+        response = await client.get("/books?search=book", headers=superadmin_headers)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data["data"]) == 1
         assert data["data"][0]["title"] == model.title
         assert data["meta"]["total"] == 1
 
-    def test_get_book_with_author_id(self, client, create_book, create_author, superadmin_headers)->None:
+    @pytest.mark.asyncio
+    async def test_get_book_with_author_id(self, client, create_book, create_author, superadmin_headers)->None:
         """Получить книги по автору"""
 
-        author = create_author()
-        create_book(author=author)
-        create_book(author=author)
-        create_book(title="Tester")
+        author = await create_author()
+        await create_book(author=author)
+        await create_book(author=author)
+        await create_book(title="Tester")
 
-        response = client.get(f"/books?author_id={author.id}", headers=superadmin_headers)
+        response = await client.get(f"/books?author_id={author.id}", headers=superadmin_headers)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         # print(json.dumps(data, ensure_ascii=False, indent=2))
@@ -89,85 +95,92 @@ class TestGetBooks:
         assert data["data"][0]["author_id"] == author.id
         assert data["data"][1]["author_id"] == author.id
 
-    def test_get_book_with_is_available_as_true(self, client, create_book, superadmin_headers)->None:
+    @pytest.mark.asyncio
+    async def test_get_book_with_is_available_as_true(self, client, create_book, superadmin_headers)->None:
         """Получить книги по наличию"""
 
-        create_book(is_available=True)
-        create_book(is_available=False)
-        create_book(is_available=False)
+        await create_book(is_available=True)
+        await create_book(is_available=False)
+        await create_book(is_available=False)
 
-        response = client.get(f"/books?is_available=True", headers=superadmin_headers)
+        response = await client.get(f"/books?is_available=True", headers=superadmin_headers)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data["data"]) == 1
 
-    def test_get_book_with_is_available_as_false(self, client, create_book, superadmin_headers)->None:
+    @pytest.mark.asyncio
+    async def test_get_book_with_is_available_as_false(self, client, create_book, superadmin_headers)->None:
         """Получить книги по наличию"""
 
-        create_book(is_available=True)
-        create_book(is_available=False)
-        create_book(is_available=False)
+        await create_book(is_available=True)
+        await create_book(is_available=False)
+        await create_book(is_available=False)
 
-        response = client.get(f"/books?is_available=False", headers=superadmin_headers)
+        response = await client.get(f"/books?is_available=False", headers=superadmin_headers)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data["data"]) == 2
 
-    def test_get_book_with_is_available_as_all(self, client, create_book, superadmin_headers)->None:
+    @pytest.mark.asyncio
+    async def test_get_book_with_is_available_as_all(self, client, create_book, superadmin_headers)->None:
         """Получить книги по наличию"""
 
-        create_book(is_available=True)
-        create_book(is_available=False)
-        create_book(is_available=False)
+        await create_book(is_available=True)
+        await create_book(is_available=False)
+        await create_book(is_available=False)
 
-        response = client.get(f"/books", headers=superadmin_headers)
+        response = await client.get(f"/books", headers=superadmin_headers)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data["data"]) == 3
 
-    def test_get_books_with_only_active(self, client, create_book, superadmin_headers)->None:
+    @pytest.mark.asyncio
+    async def test_get_books_with_only_active(self, client, create_book, superadmin_headers)->None:
         """Получить книг только активных (не удаленных)"""
 
-        model = create_book()
-        create_book(deleted_at=datetime.now())
+        model = await create_book()
+        await create_book(deleted_at=datetime.now())
 
-        response = client.get("/books", headers=superadmin_headers)
+        response = await client.get("/books", headers=superadmin_headers)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data["data"]) == 1
         assert data["data"][0]["id"] == model.id
 
-    def test_get_books_with_only_deleted(self, client, create_book, superadmin_headers)->None:
+    @pytest.mark.asyncio
+    async def test_get_books_with_only_deleted(self, client, create_book, superadmin_headers)->None:
         """Получить книги только удаленные"""
 
-        create_book()
-        deleted_model = create_book(deleted_at=datetime.now())
+        await create_book()
+        deleted_model = await create_book(deleted_at=datetime.now())
 
-        response = client.get("/books?deleted=deleted", headers=superadmin_headers)
+        response = await client.get("/books?deleted=deleted", headers=superadmin_headers)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data["data"]) == 1
         assert data["data"][0]["id"] == deleted_model.id
 
-    def test_get_books_with_all_status(self, client, create_book, superadmin_headers)->None:
+    @pytest.mark.asyncio
+    async def test_get_books_with_all_status(self, client, create_book, superadmin_headers)->None:
         """Получить книги и активных и удаленных"""
 
-        create_book()
-        create_book(deleted_at=datetime.now())
+        await create_book()
+        await create_book(deleted_at=datetime.now())
 
-        response = client.get("/books?deleted=all", headers=superadmin_headers)
+        response = await client.get("/books?deleted=all", headers=superadmin_headers)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data["data"]) == 2
 
-    def test_get_books_with_sort_asc_as_title(self, client, create_book, superadmin_headers)->None:
+    @pytest.mark.asyncio
+    async def test_get_books_with_sort_asc_as_title(self, client, create_book, superadmin_headers)->None:
         """Получить авторов с сортировкой по названию"""
 
-        model_1 = create_book(title="Tom")
-        model_2 = create_book(title="Alen")
-        model_3 = create_book(title="John")
+        model_1 = await create_book(title="Tom")
+        model_2 = await create_book(title="Alen")
+        model_3 = await create_book(title="John")
 
-        response = client.get("/books?sort_by=title&sort_order=asc", headers=superadmin_headers)
+        response = await client.get("/books?sort_by=title&sort_order=asc", headers=superadmin_headers)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data["data"]) == 3
@@ -175,14 +188,15 @@ class TestGetBooks:
         assert data["data"][1]["title"] == model_3.title
         assert data["data"][2]["title"] == model_1.title
 
-    def test_get_books_with_sort_desc_as_title(self, client, create_book, superadmin_headers)->None:
+    @pytest.mark.asyncio
+    async def test_get_books_with_sort_desc_as_title(self, client, create_book, superadmin_headers)->None:
         """Получить авторов с сортировкой по названию"""
 
-        model_1 = create_book(title="Tom")
-        model_2 = create_book(title="Alen")
-        model_3 = create_book(title="John")
+        model_1 = await create_book(title="Tom")
+        model_2 = await create_book(title="Alen")
+        model_3 = await create_book(title="John")
 
-        response = client.get("/books?sort_by=title&sort_order=desc", headers=superadmin_headers)
+        response = await client.get("/books?sort_by=title&sort_order=desc", headers=superadmin_headers)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data["data"]) == 3
@@ -190,14 +204,15 @@ class TestGetBooks:
         assert data["data"][1]["title"] == model_3.title
         assert data["data"][2]["title"] == model_2.title
 
-    def test_get_books_with_sort_asc_as_page(self, client, create_book, superadmin_headers)->None:
+    @pytest.mark.asyncio
+    async def test_get_books_with_sort_asc_as_page(self, client, create_book, superadmin_headers)->None:
         """Получить авторов с сортировкой по кол-ву страниц"""
 
-        model_1 = create_book(page=3)
-        model_2 = create_book(page=46)
-        model_3 = create_book(page=17)
+        model_1 = await create_book(page=3)
+        model_2 = await create_book(page=46)
+        model_3 = await create_book(page=17)
 
-        response = client.get("/books?sort_by=page&sort_order=asc", headers=superadmin_headers)
+        response = await client.get("/books?sort_by=page&sort_order=asc", headers=superadmin_headers)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data["data"]) == 3
@@ -205,14 +220,15 @@ class TestGetBooks:
         assert data["data"][1]["title"] == model_3.title
         assert data["data"][2]["title"] == model_2.title
 
-    def test_get_books_with_sort_desc_as_page(self, client, create_book, superadmin_headers)->None:
+    @pytest.mark.asyncio
+    async def test_get_books_with_sort_desc_as_page(self, client, create_book, superadmin_headers)->None:
         """Получить авторов с сортировкой по кол-ву страниц"""
 
-        model_1 = create_book(page=3)
-        model_2 = create_book(page=46)
-        model_3 = create_book(page=17)
+        model_1 = await create_book(page=3)
+        model_2 = await create_book(page=46)
+        model_3 = await create_book(page=17)
 
-        response = client.get("/books?sort_by=page&sort_order=desc", headers=superadmin_headers)
+        response = await client.get("/books?sort_by=page&sort_order=desc", headers=superadmin_headers)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data["data"]) == 3
@@ -220,13 +236,15 @@ class TestGetBooks:
         assert data["data"][1]["title"] == model_3.title
         assert data["data"][2]["title"] == model_1.title
 
-    def test_not_perm(self, client, create_user, auth_header)->None:
-        user = create_user(permissions=[Permissions.BOOK_SHOW.value])
-        header = auth_header(user)
+    @pytest.mark.asyncio
+    async def test_not_perm(self, client, create_user, auth_header)->None:
+        user = await create_user(permissions=[Permissions.BOOK_SHOW.value])
+        header = await auth_header(user)
 
-        response = client.get("/books", headers=header)
+        response = await client.get("/books", headers=header)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_not_auth(self, client)->None:
-        response = client.get("/books")
+    @pytest.mark.asyncio
+    async def test_not_auth(self, client)->None:
+        response = await client.get("/books")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED

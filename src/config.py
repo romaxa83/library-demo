@@ -14,6 +14,10 @@ class AppConfig(BaseSettings):
     superadmin_email: str = "admin@gmail.com"
     superadmin_password: str = "password12"
 
+    @property
+    def is_testing_env(self) -> bool:
+        return self.env == "testing"
+
 class LoggerLoguruConfig(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="LOG_", extra="ignore"
@@ -85,7 +89,7 @@ class DatabaseConfig(BaseSettings):
 
     @property
     def url(self) -> str:
-        return f"postgresql+psycopg2://{self.username}:{self.password}@{self.host}:{self.port}/{self.database}"
+        return f"postgresql+asyncpg://{self.username}:{self.password}@{self.host}:{self.port}/{self.database}"
 
 class RedisDB(BaseSettings):
     cache: int = 0
@@ -101,7 +105,6 @@ class RedisConfig(BaseSettings):
     username: str = "root"
     db: RedisDB = RedisDB()
 
-    # redis://:mysecretpassword@localhost:6379/0
     @property
     def url(self) -> str:
         return f"redis://{self.username}:{self.password}@{self.host}:{self.port}/{self.db.cache}"

@@ -5,6 +5,7 @@ from loguru import logger
 
 from src.auth.dependencies import AuthServiceDep, CurrentUserDep
 from src.auth.exceptions import UnauthorizedError
+from src.users.models import User
 from src.users.schemas import (
     UserRegister,
     UserLogin,
@@ -32,7 +33,7 @@ router = APIRouter(
     status_code=status.HTTP_201_CREATED,
     response_model=UserDetailResponse
 )
-async def signup(data: UserRegister, service: AuthServiceDep) -> UserDetailResponse:
+async def signup(data: UserRegister, service: AuthServiceDep) -> User:
     """Регистрация нового пользователя"""
     return await service.register(data)
 
@@ -42,9 +43,9 @@ async def signup(data: UserRegister, service: AuthServiceDep) -> UserDetailRespo
     status_code=status.HTTP_200_OK,
     response_model=TokenResponse
 )
-def login(data: UserLogin, service: AuthServiceDep) -> TokenResponse:
+async def login(data: UserLogin, service: AuthServiceDep) -> TokenResponse:
     """Авторизация пользователя"""
-    return service.login(data)
+    return await service.login(data)
 
 
 @router.get(
@@ -53,7 +54,7 @@ def login(data: UserLogin, service: AuthServiceDep) -> TokenResponse:
     status_code=status.HTTP_200_OK,
     response_model=UserDetailResponse
 )
-def current_user(
+async def current_user(
     user: CurrentUserDep,
 ) -> UserDetailResponse:
     """Получение текущего авторизованного пользователя"""

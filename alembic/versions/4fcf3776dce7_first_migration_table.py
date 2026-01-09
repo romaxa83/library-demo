@@ -25,7 +25,7 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=255), nullable=False),
     sa.Column('description', sa.Text(), nullable=True),
-    sa.Column('deleted_at', sa.DateTime(), nullable=True),
+    sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')
     )
@@ -49,9 +49,9 @@ def upgrade() -> None:
     sa.Column('page', sa.Integer(), nullable=False),
     sa.Column('is_available', sa.Boolean(), nullable=False),
     sa.Column('author_id', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
-    sa.Column('deleted_at', sa.DateTime(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
     sa.ForeignKeyConstraint(['author_id'], ['authors.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('title')
@@ -71,9 +71,9 @@ def upgrade() -> None:
     sa.Column('password', sa.LargeBinary(), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('role_id', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
-    sa.Column('deleted_at', sa.DateTime(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
     sa.ForeignKeyConstraint(['role_id'], ['rbac_roles.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email')

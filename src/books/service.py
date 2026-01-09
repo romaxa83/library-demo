@@ -1,7 +1,7 @@
 from datetime import datetime
-from fastapi import status
 from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload, joinedload
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload, joinedload
 
 from src.books.exceptions import AuthorNotFoundError, BookNotFoundError
 from src.books.models import Author, Book
@@ -10,10 +10,10 @@ from src.utils.pagination import PaginationHelper
 
 
 class BookService:
-    def __init__(self, session: Session):
+    def __init__(self, session: AsyncSession):
         self.session = session
 
-    def get_all_books(self, filters: BookFilterSchema) -> tuple[list[Book], int]:
+    async def get_all_books(self, filters: BookFilterSchema) -> tuple[list[Book], int]:
         """
         Получить список книг с фильтрацией и сортировкой
 
@@ -24,7 +24,7 @@ class BookService:
             Кортеж (список авторов, всего записей в БД)
         """
 
-        stmt = select(Book)
+        stmt = select(Book).options(selectinload(Book.author).joinedload(Author.books))
 
         # ✨ Фильтр по статусу удаления
         if filters.deleted == "active":
@@ -58,64 +58,68 @@ class BookService:
         else:
             stmt = stmt.order_by(order_column.asc())
 
-        recs, total = PaginationHelper.paginate(self.session, stmt, filters.skip, filters.limit)
+        recs, total = await PaginationHelper.paginate(self.session, stmt, filters.skip, filters.limit)
 
         return recs, total
 
-    def get_by_id(self, book_id: int) -> Book:
+    async def get_by_id(self, book_id: int) -> Book:
         """Получить книгу по ID"""
-        stmt = select(Book).options(selectinload(Book.author)).where(Book.id == book_id)
-        model = self.session.scalar(stmt)
+        stmt = (select(Book)
+                .options(selectinload(Book.author).joinedload(Author.books))
+                .where(Book.id == book_id))
+        model = await self.session.scalar(stmt)
 
         if not model or model.deleted_at is not None:
             raise BookNotFoundError(book_id)
 
         return model
 
-    def create(self, data: BookCreate) -> Book:
+    async def create(self, data: BookCreate) -> Book:
         """Создать новую книгу"""
         # Проверяем существование автора
-        self._validate_author_exists(data.author_id)
+        await self._validate_author_exists(data.author_id)
 
         model = Book(**data.model_dump())
         model.updated_at = datetime.now()
+
         self.session.add(model)
-        self.session.commit()
-        self.session.refresh(model)
+        await self.session.commit()
+        await self.session.refresh(model)
+
         return model
 
-    def update(self, book_id: int, data: BookUpdate) -> Book:
+    async def update(self, book_id: int, data: BookUpdate) -> Book:
         """Обновить книгу"""
-        model = self.get_by_id(book_id)
+        model = await self.get_by_id(book_id)
 
         update_data = data.model_dump(exclude_unset=True)
 
         # Проверяем внешние ключи, если они обновляются
         if "author_id" in update_data:
-            self._validate_author_exists(update_data["author_id"])
+            await self._validate_author_exists(update_data["author_id"])
 
         for field, value in update_data.items():
             setattr(model, field, value)
 
-        self.session.commit()
-        self.session.refresh(model)
-        return model
+        await self.session.commit()
 
-    def delete(self, book_id: int) -> None:
+        return await self.get_by_id(model.id)
+
+    async def delete(self, book_id: int) -> None:
         """Удалить книгу (soft delete)"""
-        model = self.get_by_id(book_id)
+        model = await self.get_by_id(book_id)
         model.deleted_at = datetime.now()
-        self.session.commit()
+        await self.session.commit()
 
-    def _validate_author_exists(self, author_id: int) -> None:
+    async def _validate_author_exists(self, author_id: int) -> None:
         """Проверить существование автора"""
         # todo оптимизировать (deleted_at - проверять на уровни бд)
-        author = (self.session.get(Author, author_id))
+        author = (await self.session.get(Author, author_id))
         if not author or author.deleted_at is not None:
             raise AuthorNotFoundError(author_id)
 
     # ==================== AUTHORS ====================
-    def get_all_authors(self, filters: AuthorFilterSchema) -> tuple[list[Author], int]:
+    async def get_all_authors(self, filters: AuthorFilterSchema) -> tuple[list[Author], int]:
         """
         Получить список авторов с фильтрацией и сортировкой
 
@@ -125,7 +129,6 @@ class BookService:
         Returns:
             Кортеж (список авторов, всего записей в БД)
         """
-
         stmt = select(Author)
 
         # ✨ Фильтр по статусу удаления
@@ -150,64 +153,67 @@ class BookService:
         else:
             stmt = stmt.order_by(order_column.asc())
 
-        authors, total = PaginationHelper.paginate(self.session, stmt, filters.skip, filters.limit)
+        authors, total = await PaginationHelper.paginate(self.session, stmt, filters.skip, filters.limit)
 
         return authors, total
 
-    def get_author_by_id(self, author_id: int) -> Author:
+    async def get_author_by_id(self, author_id: int) -> Author:
         """Получить автора по ID"""
         stmt = (select(Author)
                 .options(joinedload(Author.books))
                 .where(Author.id == author_id))
-        model = self.session.scalar(stmt)
+        model = await self.session.scalar(stmt)
         if not model or model.deleted_at is not None:
             raise AuthorNotFoundError(author_id)
         return model
 
-    def create_author(self, data: AuthorCreate) -> Author:
+    async def create_author(self, data: AuthorCreate) -> Author:
         """Создать нового автора"""
         model = Author(**data.model_dump())
         self.session.add(model)
-        self.session.commit()
-        self.session.refresh(model)
+        await self.session.commit()
+
+        model = await self.get_author_by_id(model.id)
+
         return model
 
-    def update_author(self, author_id: int, data: AuthorUpdate) -> Author:
+    async def update_author(self, author_id: int, data: AuthorUpdate) -> Author:
         """Обновить автора"""
-        model = self.get_author_by_id(author_id)
+        model = await self.get_author_by_id(author_id)
 
         update_data = data.model_dump(exclude_unset=True)
 
         for field, value in update_data.items():
             setattr(model, field, value)
 
-        self.session.commit()
-        self.session.refresh(model)
-        return model
+        await self.session.commit()
 
-    def delete_author(self, author_id: int) -> None:
+        return await self.get_author_by_id(model.id)
+
+    async def delete_author(self, author_id: int) -> None:
         """Удалить автора (soft delete)"""
-        model = self.get_author_by_id(author_id)
+        model = await self.get_author_by_id(author_id)
         model.deleted_at = datetime.now()
-        self.session.commit()
+        await self.session.commit()
 
-    def restore_author(self, author_id: int) -> Author:
+    async def restore_author(self, author_id: int) -> Author:
         """Восстановить удалённого автора"""
         stmt = select(Author).where(Author.id == author_id).where(Author.deleted_at.isnot(None))
-        author = self.session.scalar(stmt)
-        if not author:
+
+        model = await self.session.scalar(stmt)
+        if not model:
             raise AuthorNotFoundError(author_id)
 
-        author.deleted_at = None
-        self.session.commit()
-        self.session.refresh(author)
-        return author
+        model.deleted_at = None
+        await self.session.commit()
 
-    def force_delete_author(self, author_id: int) -> None:
+        return await self.get_author_by_id(model.id)
+
+    async def force_delete_author(self, author_id: int) -> None:
         """Полностью удалить автора из БД (если уже был удалён)"""
         # Получаем даже удалённого автора
         stmt = select(Author).where(Author.id == author_id)
-        author = self.session.scalar(stmt)
+        author = await self.session.scalar(stmt)
 
         if not author:
             raise AuthorNotFoundError(author_id)
@@ -217,5 +223,5 @@ class BookService:
             raise ValueError(f"Author {author_id} is not soft-deleted. Use delete() for soft delete.")
 
         # Полностью удаляем из БД
-        self.session.delete(author)
-        self.session.commit()
+        await self.session.delete(author)
+        await self.session.commit()

@@ -47,6 +47,3 @@ class RolePermission(Base):
         # ondelete="CASCADE",
     )
 
-    # role = relationship("Role", back_populates="permissions")
-    # permission = relationship("Permission", back_populates="roles")
-

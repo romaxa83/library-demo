@@ -7,9 +7,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.core.middlewares.requests_count import requests_count_middleware_dispatch
 from loguru import logger
-from src.config import Config
-
-config = Config()
+from src.config import config
 
 type CallNext = Callable[[Request], Awaitable[Response]]
 
@@ -48,7 +46,10 @@ def register_middlewares(app: FastAPI) -> None:
         request: Request,
         call_next: CallNext,
     ) -> Response:
-        logger.info(f"Request {request.method} to {request.url.path}")
+
+        if not config.app.is_testing_env:
+            logger.info(f"Request {request.method} to {request.url.path}")
+
         return await call_next(request)
 
     app.middleware("http")(add_process_time_to_requests)

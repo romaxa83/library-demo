@@ -11,20 +11,20 @@ from src.users.models import User
 
 http_bearer = HTTPBearer()
 
-def get_auth_service(session: DbSessionDep) -> AuthService:
+async def get_auth_service(session: DbSessionDep) -> AuthService:
     """Получить сервис auth"""
     return AuthService(session)
 
 # Type alias для удобства
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
-def get_current_user(
+async def get_current_user(
     service: AuthServiceDep,
     credentials: HTTPAuthorizationCredentials = Depends(http_bearer),
 ) -> User:
     token = credentials.credentials
     try:
-        return service.current_user(token)
+        return await service.current_user(token)
     except InvalidTokenError as err:
         raise UnauthorizedError(detail=str(err))
 

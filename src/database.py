@@ -1,27 +1,25 @@
-from typing import Annotated, Generator
-from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, sessionmaker, Session
+from typing import Annotated, AsyncGenerator
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import DeclarativeBase
 from fastapi import Depends
 
-from src.config import Config
-
-config = Config()
+from src.config import config
 
 # Не создаём engine здесь, это будет сделано в функции ниже
 engine = None
-SessionLocal = None
+AsyncSessionLocal = None
 
 class Base(DeclarativeBase):
     pass
 
 def init_db(db_url: str = None):
-    """Инициализация БД с использованием конкретного URL"""
-    global engine, SessionLocal
+    """Инициализация асинхронного подключения"""
+    global engine, AsyncSessionLocal
 
     if db_url is None:
         db_url = config.db.url
 
-    engine = create_engine(
+    engine = create_async_engine(
         db_url,
         echo=False, # вывод логов в терминал
         pool_pre_ping=True,
@@ -29,20 +27,26 @@ def init_db(db_url: str = None):
         max_overflow=20
     )
 
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    AsyncSessionLocal = async_sessionmaker(
+        bind=engine,
+        class_=AsyncSession,
+        autocommit=False,
+        autoflush=False,
+        expire_on_commit=False
+    )
 
-    return engine, SessionLocal
+    return engine, AsyncSessionLocal
 
-def get_db():
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Получить сессию БД"""
-    if SessionLocal is None:
+    if AsyncSessionLocal is None:
         init_db()
 
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
 
 async def dispose() -> None:
     """Закрыть все соединения с БД"""
@@ -51,4 +55,4 @@ async def dispose() -> None:
         await engine.dispose()
         engine = None
 
-DbSessionDep = Annotated[Session, Depends(get_db)]
+DbSessionDep = Annotated[AsyncSession, Depends(get_db)]

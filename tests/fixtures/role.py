@@ -1,39 +1,39 @@
-import pytest
+import pytest_asyncio
 from faker import Faker
 from src.rbac.models import Role
 
-@pytest.fixture
+@pytest_asyncio.fixture
 def fake():
     return Faker()
 
-@pytest.fixture
-def role_factory(db_session, fake):
-    def create(**kwargs):
+@pytest_asyncio.fixture
+async def role_factory(db_session, fake):
+    async def create(**kwargs):
         model = Role(
             alias=kwargs.get("alias") or fake.sentence(nb_words=5),
         )
         db_session.add(model)
-        db_session.commit()
-        db_session.refresh(model)
+        await db_session.commit()
+        await db_session.refresh(model)
         return model
 
     return create
 
 
-@pytest.fixture
-def create_role(role_factory):
-    def _create(**kwargs):
-        return role_factory(**kwargs)
+@pytest_asyncio.fixture
+async def create_role(role_factory):
+    async def _create(**kwargs):
+        return await role_factory(**kwargs)
 
     return _create
 
 
-@pytest.fixture
-def create_roles(role_factory):
-    def _create(count=3):
+@pytest_asyncio.fixture
+async def create_roles(role_factory):
+    async def _create(count=3):
         models = []
         for _ in range(count):
-            model = role_factory()
+            model = await role_factory()
             models.append(model)
         return models
 

@@ -16,7 +16,7 @@ class PermissionRequired:
     def __init__(self, permission: Permissions):
         self.permission = permission.value
 
-    def __call__(self, user: CurrentUserDep):
+    async def __call__(self, user: CurrentUserDep):
         if not user.has_permission(self.permission):
             raise ForbiddenError(detail=f"Недостаточно прав: требуется {self.permission}")
         return user

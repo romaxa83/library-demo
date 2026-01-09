@@ -1,18 +1,19 @@
-import json
-
+import pytest
 from fastapi import status
 from unittest.mock import patch, AsyncMock
+
 from src.rbac.permissions import DefaultRole
 
 
 class TestRegister:
     """Тесты для регистрации"""
 
-    def test_register_success(self, client, create_role):
+    @pytest.mark.asyncio
+    async def test_register_success(self, client, create_role):
         """Успешная регистрация пользователя"""
 
         # создаем дефолтную роль user
-        create_role(alias=DefaultRole.USER.value)
+        await create_role(alias=DefaultRole.USER.value)
 
         _data = {
             "username": "user",
@@ -20,7 +21,7 @@ class TestRegister:
             "password": "password",
         }
 
-        response = client.post("/auth/signup", json=_data)
+        response = await client.post("/auth/signup", json=_data)
 
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
@@ -33,11 +34,12 @@ class TestRegister:
         assert "id" in data
         assert "password" not in data
 
-    def test_register_success_assert_send_email(self, client, create_role):
+    @pytest.mark.asyncio
+    async def test_register_success_assert_send_email(self, client, create_role):
         """Успешная регистрация пользователя"""
 
         # создаем дефолтную роль user
-        create_role(alias=DefaultRole.USER.value)
+        await create_role(alias=DefaultRole.USER.value)
 
         _data = {
             "username": "user",
@@ -46,7 +48,7 @@ class TestRegister:
         }
 
         with patch('src.auth.service.send_verification_email', new_callable=AsyncMock) as mock_send_email:
-            response = client.post("/auth/signup", json=_data)
+            response = await client.post("/auth/signup", json=_data)
 
             assert response.status_code == status.HTTP_201_CREATED
 
@@ -62,16 +64,17 @@ class TestRegister:
             assert isinstance(verify_token, str)
             assert len(verify_token) > 0
 
-    def test_fail_without_username(self, client, create_role):
+    @pytest.mark.asyncio
+    async def test_fail_without_username(self, client, create_role):
         # создаем дефолтную роль user
-        create_role(alias=DefaultRole.USER.value)
+        await create_role(alias=DefaultRole.USER.value)
 
         _data = {
             "email": "user1@gmail.com",
             "password": "password",
         }
 
-        response = client.post("/auth/signup", json=_data)
+        response = await client.post("/auth/signup", json=_data)
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         data = response.json()
@@ -80,16 +83,17 @@ class TestRegister:
         assert data['detail'][0]['loc'][1] == "username"
         assert data['detail'][0]['msg'] == "Field required"
 
-    def test_fail_without_email(self, client, create_role):
+    @pytest.mark.asyncio
+    async def test_fail_without_email(self, client, create_role):
         # создаем дефолтную роль user
-        create_role(alias=DefaultRole.USER.value)
+        await create_role(alias=DefaultRole.USER.value)
 
         _data = {
             "username": "user",
             "password": "password",
         }
 
-        response = client.post("/auth/signup", json=_data)
+        response = await client.post("/auth/signup", json=_data)
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         data = response.json()
@@ -98,9 +102,10 @@ class TestRegister:
         assert data['detail'][0]['loc'][1] == "email"
         assert data['detail'][0]['msg'] == "Field required"
 
-    def test_fail_not_valid_email(self, client, create_role):
+    @pytest.mark.asyncio
+    async def test_fail_not_valid_email(self, client, create_role):
         # создаем дефолтную роль user
-        create_role(alias=DefaultRole.USER.value)
+        await create_role(alias=DefaultRole.USER.value)
 
         _data = {
             "username": "user",
@@ -108,7 +113,7 @@ class TestRegister:
             "password": "password",
         }
 
-        response = client.post("/auth/signup", json=_data)
+        response = await client.post("/auth/signup", json=_data)
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         data = response.json()
@@ -117,9 +122,10 @@ class TestRegister:
         assert data['detail'][0]['loc'][1] == "email"
         assert data['detail'][0]['msg'] == "value is not a valid email address: An email address must have an @-sign."
 
-    def test_fail_duplicate_email(self, client, create_role, create_user):
+    @pytest.mark.asyncio
+    async def test_fail_duplicate_email(self, client, create_role, create_user):
         # создаем дефолтную роль user
-        create_role(alias=DefaultRole.USER.value)
+        await create_role(alias=DefaultRole.USER.value)
 
         _data = {
             "username": "user",
@@ -127,25 +133,26 @@ class TestRegister:
             "password": "password",
         }
 
-        create_user(email=_data["email"])
+        await create_user(email=_data["email"])
 
-        response = client.post("/auth/signup", json=_data)
+        response = await client.post("/auth/signup", json=_data)
 
         assert response.status_code == status.HTTP_409_CONFLICT
         data = response.json()
 
         assert data['detail'] ==f"User with email '{_data["email"]}' already exists"
 
-    def test_fail_without_password(self, client, create_role):
+    @pytest.mark.asyncio
+    async def test_fail_without_password(self, client, create_role):
         # создаем дефолтную роль user
-        create_role(alias=DefaultRole.USER.value)
+        await create_role(alias=DefaultRole.USER.value)
 
         _data = {
             "username": "user",
             "email": "user1@gmail.com",
         }
 
-        response = client.post("/auth/signup", json=_data)
+        response = await client.post("/auth/signup", json=_data)
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         data = response.json()
@@ -154,14 +161,15 @@ class TestRegister:
         assert data['detail'][0]['loc'][1] == "password"
         assert data['detail'][0]['msg'] == "Field required"
 
-    def test_fail_not_exist_default_role(self, client, create_role):
+    @pytest.mark.asyncio
+    async def test_fail_not_exist_default_role(self, client, create_role):
         _data = {
             "username": "user",
             "email": "user@gmail.com",
             "password": "password",
         }
 
-        response = client.post("/auth/signup", json=_data)
+        response = await client.post("/auth/signup", json=_data)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
         data = response.json()

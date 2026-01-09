@@ -1,4 +1,5 @@
 from fastapi import status
+import pytest
 from pygments.lexers import data
 
 from src.rbac.permissions import Permissions
@@ -7,12 +8,13 @@ from src.rbac.permissions import Permissions
 class TestCreateBook:
     """Тесты для создания книги"""
 
-    def test_create_book_success(self, client, create_author, create_user, auth_header)->None:
+    @pytest.mark.asyncio
+    async def test_create_book_success(self, client, create_author, create_user, auth_header)->None:
         """Успешное создание книги"""
-        user = create_user(permissions=[Permissions.BOOK_CREATE.value])
-        header = auth_header(user)
+        user = await create_user(permissions=[Permissions.BOOK_CREATE.value])
+        header = await auth_header(user)
 
-        author = create_author()
+        author = await create_author()
 
         _data = {
             "title": "test title",
@@ -22,7 +24,7 @@ class TestCreateBook:
             "author_id": author.id,
         }
 
-        response = client.post("/books", json=_data, headers=header)
+        response = await client.post("/books", json=_data, headers=header)
         assert response.status_code == status.HTTP_201_CREATED
 
         data = response.json()
@@ -40,16 +42,18 @@ class TestCreateBook:
         assert data["created_at"] is not None
         assert data["updated_at"] is not None
 
-    def test_create_book_only_required_fields(self, client, create_author, superadmin_headers)->None:
+    @pytest.mark.asyncio
+    async def test_create_book_only_required_fields(self, client, create_author, superadmin_headers)->None:
         """Успешное создание книги только с обязательными полями"""
-        author = create_author()
+
+        author = await create_author()
 
         _data = {
             "title": "test title",
             "author_id": author.id,
         }
 
-        response = client.post("/books", json=_data, headers=superadmin_headers)
+        response = await client.post("/books", json=_data, headers=superadmin_headers)
         assert response.status_code == status.HTTP_201_CREATED
 
         data = response.json()
@@ -59,53 +63,55 @@ class TestCreateBook:
         assert data["page"] == 0
         assert data["is_available"] == True
 
-    def test_create_book_without_title(self, client, create_author, superadmin_headers)->None:
+    @pytest.mark.asyncio
+    async def test_create_book_without_title(self, client, create_author, superadmin_headers)->None:
         """Попытка создания книги без названия - должна быть ошибка"""
-        author = create_author()
+        author = await create_author()
 
         _data = {
             "author_id": author.id,
         }
 
-        response = client.post("/books", json=_data, headers=superadmin_headers)
+        response = await client.post("/books", json=_data, headers=superadmin_headers)
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
-    def test_create_book_without_author(self, client, superadmin_headers)->None:
+    @pytest.mark.asyncio
+    async def test_create_book_without_author(self, client, superadmin_headers)->None:
         """Попытка создания книгу без автора"""
         _data = {
             "title": "test title"
         }
 
-        response = client.post("/books", json=_data, headers=superadmin_headers)
+        response = await client.post("/books", json=_data, headers=superadmin_headers)
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
-    def test_create_book_duplicate_title(self, client,create_book, superadmin_headers)->None:
+    @pytest.mark.asyncio
+    async def test_create_book_duplicate_title(self, client,create_book, superadmin_headers)->None:
         """Создание книги с существующим названием (должна быть ошибка)"""
-
-        book = create_book()
+        book = await create_book()
 
         _data = {
             "title": book.title,
-            "author_id": book.author.id,
+            "author_id": book.author_id,
         }
 
-        response = client.post("/books", json=_data, headers=superadmin_headers)
+        response = await client.post("/books", json=_data, headers=superadmin_headers)
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
-    def test_create_book_empty_title(self, client, create_author, superadmin_headers)->None:
+    @pytest.mark.asyncio
+    async def test_create_book_empty_title(self, client, create_author, superadmin_headers)->None:
         """Создание книги с пустым названием (должна быть ошибка)"""
-
-        author = create_author()
+        author = await create_author()
 
         _data = {
             "title": "",
             "author_id": author.id,
         }
 
-        response = client.post("/books", json=_data, headers=superadmin_headers)
+        response = await client.post("/books", json=_data, headers=superadmin_headers)
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
@@ -114,7 +120,8 @@ class TestCreateBook:
         assert data['detail'][0]['type'] == 'string_too_short'
         assert data['detail'][0]['msg'] == 'String should have at least 1 character'
 
-    def test_create_book_not_exist_author(self, client, superadmin_headers)->None:
+    @pytest.mark.asyncio
+    async def test_create_book_not_exist_author(self, client, superadmin_headers)->None:
         """Создание книги с несуществующим автором (должна быть ошибка)"""
 
         _data = {
@@ -122,7 +129,7 @@ class TestCreateBook:
             "author_id": 99999,
         }
 
-        response = client.post("/books", json=_data, headers=superadmin_headers)
+        response = await client.post("/books", json=_data, headers=superadmin_headers)
 
         # assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
@@ -130,11 +137,12 @@ class TestCreateBook:
 
         assert data['detail'] == 'Author with id 99999 not found'
 
-    def test_not_perm(self, client, create_author, create_user, auth_header)->None:
-        user = create_user(permissions=[Permissions.BOOK_SHOW.value])
-        header = auth_header(user)
+    @pytest.mark.asyncio
+    async def test_not_perm(self, client, create_author, create_user, auth_header)->None:
+        user = await create_user(permissions=[Permissions.BOOK_SHOW.value])
+        header = await auth_header(user)
 
-        author = create_author()
+        author = await create_author()
 
         _data = {
             "title": "test title",
@@ -144,11 +152,12 @@ class TestCreateBook:
             "author_id": author.id,
         }
 
-        response = client.post("/books", json=_data, headers=header)
+        response = await client.post("/books", json=_data, headers=header)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_not_auth(self, client, create_author, create_user)->None:
-        author = create_author()
+    @pytest.mark.asyncio
+    async def test_not_auth(self, client, create_author)->None:
+        author = await create_author()
 
         _data = {
             "title": "test title",
@@ -158,5 +167,5 @@ class TestCreateBook:
             "author_id": author.id,
         }
 
-        response = client.post("/books", json=_data)
+        response = await client.post("/books", json=_data)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED

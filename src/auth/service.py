@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi.security import HTTPBearer
 
@@ -10,7 +10,7 @@ from src.notifications.send_email import (
     send_email_reset_password
 )
 from src.auth import utils as auth_utils
-from src.users.dependencies import UserServiceDep
+from src.users.service import UserService
 from src.users.models import User
 from src.rbac.models import Role
 from src.rbac.permissions import DefaultRole
@@ -42,20 +42,19 @@ from loguru import logger
 http_bearer = HTTPBearer()
 
 class AuthService:
-    def __init__(self, session: Session):
+    def __init__(self, session: AsyncSession):
         self.session = session
-        self.user_service = UserServiceDep
+        self.user_service = UserService(session)
 
     async def register(self, data: UserRegister) -> User:
         """Зарегистрировать нового пользователя"""
 
-        role = self.session.scalar(select(Role).where(Role.alias == DefaultRole.USER.value))
+        role = await self.session.scalar(select(Role).where(Role.alias == DefaultRole.USER.value))
         if not role:
             raise RoleNotFoundByAliasError(DefaultRole.USER.value)
 
-        if self.session.scalar(select(User).where(User.email == data.email)):
+        if await self.session.scalar(select(User).where(User.email == data.email)):
             raise UserAlreadyExistsError(data.email)
-
 
         model = User(**data.model_dump())
 
@@ -63,8 +62,9 @@ class AuthService:
         model.role_id = role.id
 
         self.session.add(model)
-        self.session.commit()
-        self.session.refresh(model)
+        await self.session.commit()
+
+        model = await self.user_service.get_by_id(model.id)
 
         verify_token = auth_utils.create_verify_email_token({
             "sub": str(model.id),
@@ -75,16 +75,9 @@ class AuthService:
 
         return model
 
-    def login(self, data: UserLogin) -> TokenResponse:
-        # user = self.user_service.find_by_email(self, email=data.email)
+    async def login(self, data: UserLogin) -> TokenResponse:
+        user = await self.user_service.find_by_email(data.email)
 
-        q = select(User).where(User.email == data.email)
-        user = self.session.scalar(q)
-
-        # s = select(User)
-        # count = self.session.scalars(s).all()
-        # print(count)
-        # print(select(User).)
         if (
                 not user
                 or not user.is_active
@@ -108,13 +101,13 @@ class AuthService:
 
         return auth_utils.create_access_token(payload)
 
-    def refresh_tokens(self, token: str) -> TokenResponse:
+    async def refresh_tokens(self, token: str) -> TokenResponse:
         payload = auth_utils.decode_jwt(token=token)
 
         if payload.get(TOKEN_TYPE_FIELD) != REFRESH_TOKEN_TYPE:
             raise UnauthorizedError(detail="Invalid token type")
 
-        user = self.user_service.find_by_id(self, id=int(payload.get("sub")))
+        user = await self.user_service.find_by_id(id=int(payload.get("sub")))
 
         if (
                 not user
@@ -135,13 +128,13 @@ class AuthService:
             refresh_token=auth_utils.create_refresh_token({"sub": str(user.id)}),
         )
 
-    def current_user(self, token: str)->User | None :
+    async def current_user(self, token: str)->User | None :
         payload = auth_utils.decode_jwt(token=token)
 
         if payload.get(TOKEN_TYPE_FIELD) != ACCESS_TOKEN_TYPE:
             raise UnauthorizedError(detail="Invalid token type")
 
-        user = self.user_service.find_by_id(self, id=int(payload.get("sub")))
+        user = await self.user_service.find_by_id(id=int(payload.get("sub")))
 
         if (
                 not user
@@ -157,9 +150,8 @@ class AuthService:
 
         if payload.get(TOKEN_TYPE_FIELD) != VERIFY_EMAIL_TOKEN_TYPE:
             return SuccessResponse(msg="Invalid token type")
-            # raise UnauthorizedError(detail="Invalid token type")
 
-        model = self.user_service.find_by_id(self, id=int(payload.get("sub")))
+        model = await self.user_service.find_by_id(self, id=int(payload.get("sub")))
 
         if (
                 not model
@@ -176,8 +168,8 @@ class AuthService:
         model.email_verify_at = datetime.now(timezone.utc)
 
         self.session.add(model)
-        self.session.commit()
-        self.session.refresh(model)
+        await self.session.commit()
+        await self.session.refresh(model)
 
         await send_email_verified(model)
 
@@ -186,7 +178,7 @@ class AuthService:
 
     async def forgot_password(self, data: ForgotPassword)-> SuccessResponse:
 
-        model = self.user_service.find_by_email(self, email=data.email)
+        model = await self.user_service.find_by_email(self, email=data.email)
 
         if (
                 not model
@@ -212,7 +204,7 @@ class AuthService:
         if payload.get(TOKEN_TYPE_FIELD) != RESET_PASSWORD_TOKEN_TYPE:
             return SuccessResponse(msg="Invalid token type")
 
-        model = self.user_service.find_by_email(self, email=payload.get("email"))
+        model = await self.user_service.find_by_email(self, email=payload.get("email"))
 
         if (
                 not model
@@ -224,8 +216,8 @@ class AuthService:
         model.password = auth_utils.hash_password(data.password)
 
         self.session.add(model)
-        self.session.commit()
-        self.session.refresh(model)
+        await self.session.commit()
+        await self.session.refresh(model)
 
         await send_email_reset_password(model, data.password)
 

@@ -4,6 +4,7 @@ from typing import Generic, Tuple, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import Select
 
@@ -50,7 +51,12 @@ class PaginationHelper:
     """Помощник для работы с пагинацией"""
 
     @staticmethod
-    def paginate(session: Session, stmt: Select, skip: int = 0, limit: int = 10) -> Tuple[list, int]:
+    async def paginate(
+            session: AsyncSession,
+            stmt: Select,
+            skip: int = 0,
+            limit: int = 10
+    ) -> Tuple[list, int]:
         """
         Выполнить пагинированный запрос
 
@@ -65,12 +71,14 @@ class PaginationHelper:
         """
         # ✨ Создаём отдельный запрос для подсчёта БЕЗ ORDER BY
         # Используем order_by(None) чтобы очистить сортировку
+
         count_stmt = stmt.order_by(None).with_only_columns(func.count())
-        total: int = session.scalar(count_stmt) or 0
+        total: int = await session.scalar(count_stmt) or 0
 
         # ✨ Применяем пагинацию к исходному запросу (с сортировкой)
         paginated_stmt = stmt.offset(skip).limit(limit)
-        results = list(session.scalars(paginated_stmt).all())
+
+        results = list((await session.scalars(paginated_stmt)).all())
 
         return results, total
 

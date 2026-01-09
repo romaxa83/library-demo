@@ -1,8 +1,8 @@
-import pytest
+import pytest_asyncio
 from faker import Faker
 from datetime import datetime, timezone
 
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from src.auth.service import AuthService
 from src.rbac.models import Role
@@ -11,32 +11,32 @@ from src.users.models import User
 from src.auth import utils as auth_utils
 from sqlalchemy import select
 
-@pytest.fixture
+@pytest_asyncio.fixture
 def fake():
     """Фикстура для генерации фейковых данных"""
     return Faker()
 
-def _load_user_with_role(db_session, user_id: int) -> User:
+async def _load_user_with_role(db_session, user_id: int) -> User:
     """Загрузить пользователя с ролью и пермишенами"""
-    user_stmt = (
+    stmt = (
         select(User)
         .options(
-            joinedload(User.role).joinedload(Role.permissions)
+            joinedload(User.role).selectinload(Role.permissions)
         )
         .where(User.id == user_id)
     )
-    return db_session.scalar(user_stmt)
+    return await db_session.scalar(stmt)
 
-def _create_access_token(db_session, user: User) -> str:
+async def _create_access_token(db_session, user: User) -> str:
     """Создает токен для пользователя"""
     auth_service = AuthService(db_session)
     return auth_service._create_access_token(user)
 
-@pytest.fixture
-def user_factory(db_session, fake, create_role, create_permission):
+@pytest_asyncio.fixture
+async def user_factory(db_session, fake, create_role, create_permission):
     """Фабрика для создания тестовых пользователей с ролью"""
 
-    def create(
+    async def create(
         username: str = None,
         email: str = None,
         password: str = None,
@@ -67,10 +67,17 @@ def user_factory(db_session, fake, create_role, create_permission):
                 User: Созданный пользователь с загруженной ролью и пермишенами
             """
 
-        # Получаем или создаем роль через фикстуру
+        stmt_role = (
+            select(Role)
+            .options(selectinload(Role.permissions))
+            .where(Role.alias == role_alias)
+        )
+        role = await db_session.scalar(stmt_role)
 
-        if not (role := db_session.scalar(select(Role).where(Role.alias == role_alias))):
-         role = create_role(alias=role_alias)
+        # Получаем или создаем роль через фикстуру
+        if not role:
+            role = await create_role(alias=role_alias)
+            await db_session.refresh(role, ["permissions"])
 
         # Обрабатываем пермишены
         if permissions:
@@ -79,12 +86,12 @@ def user_factory(db_session, fake, create_role, create_permission):
                 for perm_alias in permissions:
                     # Извлекаем группу из алиаса (например, "author.list" -> "author")
                     group = perm_alias.split(".")[0] if "." in perm_alias else "general"
-                    perm = create_permission(alias=perm_alias, group=group)
+                    perm = await create_permission(alias=perm_alias, group=group)
                     if perm not in role.permissions:
                         role.permissions.append(perm)
             elif isinstance(permissions, dict):
                 # Если это один пермишен как словарь
-                perm = create_permission(
+                perm = await create_permission(
                     alias=permissions.get("alias"),
                     group=permissions.get("group") or permissions.get("alias").split(".")[0],
                     description=permissions.get("description")
@@ -92,34 +99,34 @@ def user_factory(db_session, fake, create_role, create_permission):
                 if perm not in role.permissions:
                     role.permissions.append(perm)
 
-            db_session.commit()
+            await db_session.commit()
 
         model = User(
             username=username or fake.user_name(),
             email=email or fake.email(),
             password=auth_utils.hash_password(password or fake.password()),
-            email_verify_at=email_verify_at or datetime.now(tz=timezone.utc),
+            email_verify_at=email_verify_at,
             is_active=is_active,
             role_id=role.id,
             deleted_at=kwargs.get("deleted_at"),
-            created_at=kwargs.get("created_at") or datetime.now(tz=timezone.utc),
-            updated_at=kwargs.get("updated_at") or datetime.now(tz=timezone.utc),
+            created_at=kwargs.get("created_at") or datetime.now(),
+            updated_at=kwargs.get("updated_at") or datetime.now(),
         )
 
         db_session.add(model)
-        db_session.commit()
+        await db_session.commit()
 
         # Загружаем пользователя с ролью и пермишенами
-        return _load_user_with_role(db_session, model.id)
+        return await _load_user_with_role(db_session, model.id)
 
     return create
 
 
-@pytest.fixture
-def create_user(user_factory):
+@pytest_asyncio.fixture
+async def create_user(user_factory):
     """Удобная фикстура для создания одного пользователя"""
 
-    def _create(
+    async def _create(
         username: str = None,
         email: str = None,
         password: str = None,
@@ -147,7 +154,7 @@ def create_user(user_factory):
             # Пользователь с кастомной ролью
             user = create_user(role_alias="admin", permissions=["author.create"])
         """
-        return user_factory(
+        return await user_factory(
             username=username,
             email=email,
             password=password,
@@ -159,11 +166,11 @@ def create_user(user_factory):
     return _create
 
 
-@pytest.fixture
-def create_users(user_factory):
+@pytest_asyncio.fixture
+async def create_users(user_factory):
     """Удобная фикстура для создания нескольких пользователей"""
 
-    def _create(
+    async def _create(
         count: int = 3,
         role_alias: str = DefaultRole.USER.value,
         permissions: dict | list = None,
@@ -174,7 +181,7 @@ def create_users(user_factory):
         """
         users = []
         for _ in range(count):
-            user = user_factory(
+            user = await user_factory(
                 role_alias=role_alias,
                 permissions=permissions,
                 **kwargs
@@ -184,34 +191,34 @@ def create_users(user_factory):
 
     return _create
 
-@pytest.fixture
-def superadmin_user(user_factory):
+@pytest_asyncio.fixture
+async def superadmin_user(user_factory):
     """Создает супер-администратора"""
-    return user_factory(role_alias=DefaultRole.SUPERADMIN.value)
+    return await user_factory(role_alias=DefaultRole.SUPERADMIN.value)
 
-@pytest.fixture
-def auth_access_token(db_session, user)->str:
+@pytest_asyncio.fixture
+async def auth_access_token(db_session, user)->str:
     """Генерирует JWT токен для авторизованного пользователя"""
     auth_service = AuthService(db_session)
     return auth_service._create_access_token(user)
 
 
-@pytest.fixture
-def auth_header(db_session):
+@pytest_asyncio.fixture
+async def auth_header(db_session):
     """Создает заголовки авторизации для любого пользователя"""
 
-    def _create(user: User) -> dict:
-        token = _create_access_token(db_session, user)
+    async def _create(user: User) -> dict:
+        token = await _create_access_token(db_session, user)
         return {"Authorization": f"Bearer {token}"}
 
     return _create
 
-@pytest.fixture
-def superadmin_token(db_session, superadmin_user) -> str:
+@pytest_asyncio.fixture
+async def superadmin_token(db_session, superadmin_user) -> str:
     """Генерирует JWT токен для супер-администратора"""
-    return _create_access_token(db_session, superadmin_user)
+    return await _create_access_token(db_session, superadmin_user)
 
-@pytest.fixture
-def superadmin_headers(superadmin_token):
+@pytest_asyncio.fixture
+async def superadmin_headers(superadmin_token):
     """Возвращает заголовки с токеном супер-администратора"""
     return {"Authorization": f"Bearer {superadmin_token}"}
