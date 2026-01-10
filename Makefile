@@ -46,3 +46,7 @@ venv: ## активируем виртуальное окружение
 .PHONY: run_test
 run_test: ## запускает тесты
 	 pytest -vvs --tb=short -l
+
+.PHONY: run_test_async
+run_test_async: ## запускает тесты
+	 pytest -vvs --tb=short -l -n auto

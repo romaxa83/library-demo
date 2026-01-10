@@ -22,7 +22,7 @@ class TestCreateRole:
         assert response.status_code == status.HTTP_201_CREATED
 
         data = response.json()
-        print(data)
+
         assert "id" in data
         assert data["alias"] == _data["alias"]
         assert len(data["permissions"]) == 0
@@ -45,7 +45,7 @@ class TestCreateRole:
         assert response.status_code == status.HTTP_201_CREATED
 
         data = response.json()
-        print(data)
+
         assert "id" in data
         assert data["alias"] == _data["alias"]
         assert len(data["permissions"]) == 2
