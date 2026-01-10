@@ -1,10 +1,11 @@
 from typing import Sequence
 
 from fastapi_cache import FastAPICache
-from sqlalchemy import select
+from sqlalchemy import select, exists
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, selectinload
 from loguru import logger
+from src.users.models import User
 
 from src.rbac.permissions import (
     DefaultRole,
@@ -14,13 +15,15 @@ from src.rbac.permissions import (
 from src.rbac.exceptions import (
     RoleNotFoundError,
     PermissionNotFoundError,
-    RoleNotFoundByAliasError
+    RoleNotFoundByAliasError,
+    RoleCanNotDeleteError
 )
 from src.rbac.schemas import (
     RoleCreate,
     RoleUpdate,
     PermissionCreate,
-    PermissionUpdate, PermissionsDetailResponse,
+    PermissionUpdate,
+    PermissionsDetailResponse,
 )
 from src.rbac.models import Role, Permission
 import  asyncio
@@ -30,11 +33,16 @@ class RbacService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_all_roles(self) -> Sequence[Role]:
+    async def get_all_roles(self, exclude_aliases: list[str] | None = None) -> Sequence[Role]:
 
-        stmt = select(Role)
+        stmt = (select(Role)
+                .options(selectinload(Role.permissions)))
 
-        return await self.session.scalars(stmt).all()
+        if exclude_aliases:
+            stmt = stmt.where(Role.alias.not_in(exclude_aliases))
+
+
+        return (await self.session.scalars(stmt)).all()
 
     async def get_by_id(self, role_id: int) -> Role:
         """Получить роль по ID"""
@@ -90,24 +98,25 @@ class RbacService:
         return model
 
     async def create_role(self, data: RoleCreate) -> Role:
-        data_role = data.model_dump(exclude={"permission_ids"})
 
+        perms = []
+        if data.permission_ids:
+            stmt = select(Permission).where(Permission.id.in_(data.permission_ids))
+            perms = (await self.session.scalars(stmt)).all()
+
+        data_role = data.model_dump(exclude={"permission_ids"})
         model = Role(**data_role)
 
-        self.session.add(model)
-        await self.session.flush()
+        if perms:
+            model.permissions = list(perms)
 
-        if data.permission_ids:
-            for perm_id in data.permission_ids:
-                perm = await self.get_permission_by_id(perm_id)
-                model.permissions.append(perm)
+        self.session.add(model)
 
         await self.session.commit()
-        await self.session.refresh(model)
 
         logger.success(f"Created role: {model.alias}")
 
-        return model
+        return await self.get_by_id(model.id)
 
     async def update_role(self, role_id: int, data: RoleUpdate) -> Role:
         """Обновить роль"""
@@ -126,17 +135,24 @@ class RbacService:
                 model.permissions.append(perm)
 
         await self.session.commit()
-        await self.session.refresh(model)
-        return model
+
+        return await self.get_by_id(model.id)
 
     async def delete_role(self, role_id: int) -> None:
         """Удаляем роль"""
         stmt = select(Role).where(Role.id == role_id)
         model = await self.session.scalar(stmt)
 
-        # todo добавить проверку что нельзя удалить роль которая привязана к пользователю, а также дефолтный роли (установленные в системе)
-        if not model:
+        if not model or model.is_superadmin:
             raise RoleNotFoundError(role_id)
+
+        if model.is_default:
+            raise RoleCanNotDeleteError
+
+        user_exists_stmt = select(exists().where(User.role_id == role_id))
+        has_users = await self.session.scalar(user_exists_stmt)
+        if has_users:
+            raise RoleCanNotDeleteError(detail="Cannot delete role because it is assigned to one or more users")
 
         await self.session.delete(model)
         await self.session.commit()
@@ -145,7 +161,7 @@ class RbacService:
 
         stmt = select(Permission)
 
-        permissions = await self.session.scalars(stmt).all()
+        permissions = (await self.session.scalars(stmt)).all()
 
         return [PermissionsDetailResponse.model_validate(p) for p in permissions]
 
@@ -171,40 +187,42 @@ class RbacService:
 
         return model
 
-    def insert_default_roles(self) -> None:
+    async def insert_default_roles(self) -> None:
         for role in DefaultRole:
-            if self.find_role_by_alias(alias=role.value) is None:
-                asyncio.run(self.create_role(RoleCreate(alias=role.value)))
+            if await self.find_role_by_alias(alias=role.value) is None:
+                # asyncio.run(
+                    await self.create_role(RoleCreate(alias=role.value))
+                # )
 
-    def attach_permissions_to_role(self) -> None:
+    async def attach_permissions_to_role(self) -> None:
         for role_alias, perms in get_permissions_for_roles().items():
-            if role := self.get_role_by_alias(alias=role_alias):
+            if role := await self.get_role_by_alias(alias=role_alias):
                 role.permissions.clear()
                 for perm_alias in perms:
-                    if perm := self.find_permission_by_alias(alias=perm_alias):
+                    if perm := await self.find_permission_by_alias(alias=perm_alias):
                         role.permissions.append(perm)
 
-                self.session.commit()
+                await self.session.commit()
 
-    def insert_or_update_permission(self) -> None:
+    async def insert_or_update_permission(self) -> None:
         # FastAPICache.clear(namespace=config.cache.namespace.permissions)
 
         for group, perms in get_permissions_for_seed().items():
             for perm in perms:
-                if model := self.find_permission_by_alias(alias=perm['alias']):
-                    asyncio.run(
-                        self.update_permission(
+                if model := await self.find_permission_by_alias(alias=perm['alias']):
+                    # asyncio.run(
+                        await self.update_permission(
                             permission_id=model.id,
                             data=PermissionUpdate(description=perm['description'])
-                        )
+                        # )
                     )
                 else:
-                    asyncio.run(
-                        self.create_permission(
+                    # asyncio.run(
+                        await self.create_permission(
                             PermissionCreate(
                                 group=group,
                                 alias=perm['alias'],
                                 description=perm['description'],
                             )
                         )
-                    )
+                    # )

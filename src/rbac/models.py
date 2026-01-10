@@ -20,6 +20,10 @@ class Role(Base):
     def is_superadmin(self) -> bool:
         return self.alias == DefaultRole.SUPERADMIN.value
 
+    @property
+    def is_default(self) -> bool:
+        return self.alias in [role.value for role in DefaultRole]
+
 class Permission(Base):
     __tablename__ = "rbac_permissions"
 

@@ -3,8 +3,11 @@ from fastapi import APIRouter, status, Depends, Request, Response
 from fastapi_cache.decorator import cache
 import hashlib
 from src.rbac.dependencies import PermissionRequired
-from src.rbac.permissions import Permissions
+from src.rbac.permissions import Permissions, DefaultRole
 
+from src.rbac.exceptions import (
+    RoleNotFoundError
+)
 from src.core.schemas.responses import ResponseList
 from src.rbac.dependencies import RbacServiceDep
 from src.rbac.schemas import (
@@ -31,7 +34,9 @@ async def get_roles(
     service: RbacServiceDep,
     user: Annotated[User, Depends(PermissionRequired(Permissions.ROLE_LIST))]
 )->ResponseList[RoleDetailResponse]:
-    data = service.get_all_roles()
+    data = await service.get_all_roles(
+        exclude_aliases=[DefaultRole.SUPERADMIN.value]
+    )
 
     return ResponseList(data=data)
 
@@ -45,7 +50,12 @@ async def get_role(
     service: RbacServiceDep,
     user: Annotated[User, Depends(PermissionRequired(Permissions.ROLE_SHOW))]
 )->Role:
-    return service.get_by_id(role_id)
+
+    model = await service.get_by_id(role_id)
+    if model.is_superadmin:
+        raise RoleNotFoundError(role_id)
+
+    return model
 
 @router.post(
     "/roles",
@@ -71,7 +81,7 @@ async def update_role(
     service: RbacServiceDep,
     user: Annotated[User, Depends(PermissionRequired(Permissions.ROLE_UPDATE))]
 ):
-    return service.update_role(role_id, data)
+    return await service.update_role(role_id, data)
 
 @router.delete(
     "/roles/{role_id}",
@@ -83,7 +93,7 @@ async def delete_role(
     service: RbacServiceDep,
     user: Annotated[User, Depends(PermissionRequired(Permissions.ROLE_DELETE))]
 )->None:
-    return service.delete_role(role_id)
+    return await service.delete_role(role_id)
 
 def perm_list_key_builder(
     func: Callable[..., Any],
@@ -114,14 +124,15 @@ def perm_list_key_builder(
     summary="Список разрешений",
     response_model=ResponseList[PermissionsDetailResponse]
 )
-@cache(
-    expire=60*10,
-    key_builder=perm_list_key_builder,
-    namespace=config.cache.namespace.permissions,
-)
-def get_permissions(
+# todo нужно доработать чтоб кеш не срабатывал при тестах
+# @cache(
+#     expire=60*10,
+#     key_builder=perm_list_key_builder,
+#     namespace=config.cache.namespace.permissions,
+# )
+async def get_permissions(
     service: RbacServiceDep,
     user: Annotated[User, Depends(PermissionRequired(Permissions.PERMISSION_LIST))]
 )->ResponseList[PermissionsDetailResponse]:
-    data = service.get_all_permissions()
+    data = await service.get_all_permissions()
     return ResponseList(data=data)
