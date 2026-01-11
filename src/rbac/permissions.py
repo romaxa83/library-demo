@@ -37,11 +37,12 @@ class  Permissions(Enum):
     AUTHOR_FORCE_DELETE = f"{PermissionGroup.AUTHOR.value}.force_delete"
 
     # Action by book
-    BOOK_SHOW   = f"{PermissionGroup.BOOK.value}.show"
-    BOOK_LIST   = f"{PermissionGroup.BOOK.value}.list"
-    BOOK_CREATE = f"{PermissionGroup.BOOK.value}.create"
-    BOOK_UPDATE = f"{PermissionGroup.BOOK.value}.update"
-    BOOK_DELETE = f"{PermissionGroup.BOOK.value}.delete"
+    BOOK_SHOW       = f"{PermissionGroup.BOOK.value}.show"
+    BOOK_LIST       = f"{PermissionGroup.BOOK.value}.list"
+    BOOK_CREATE     = f"{PermissionGroup.BOOK.value}.create"
+    BOOK_UPDATE     = f"{PermissionGroup.BOOK.value}.update"
+    BOOK_DELETE     = f"{PermissionGroup.BOOK.value}.delete"
+    BOOK_UPLOAD_IMG = f"{PermissionGroup.BOOK.value}.upload_img"
 
 
 def get_permissions_for_seed():
@@ -78,6 +79,7 @@ def get_permissions_for_seed():
             {"alias": Permissions.BOOK_CREATE.value, "description": "Создать книгу"},
             {"alias": Permissions.BOOK_UPDATE.value, "description": "Редактировать книгу"},
             {"alias": Permissions.BOOK_DELETE.value, "description": "Удалить книгу"},
+            {"alias": Permissions.BOOK_UPLOAD_IMG.value, "description": "Загрузить картинок для книг"},
         ],
     }
 

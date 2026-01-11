@@ -1,6 +1,7 @@
 from typing import Annotated
-from fastapi import APIRouter, Query, status, Depends
+from fastapi import APIRouter, Query, status, Depends, UploadFile, File, HTTPException
 
+from src.media.schemas import ImageUploadValidation
 from src.rbac.dependencies import PermissionRequired
 from src.rbac.permissions import Permissions
 from src.books.dependencies import BookServiceDep
@@ -215,7 +216,12 @@ async def create_book(
     return await service.create(data)
 
 
-@router.patch("/books/{book_id}", tags=["Books"], summary="Обновить книгу", response_model=BookResponse)
+@router.patch(
+    "/books/{book_id}",
+    tags=["Books"],
+    summary="Обновить книгу",
+    response_model=BookResponse
+)
 async def update_book(
     book_id: int,
     data: BookUpdate,
@@ -234,3 +240,34 @@ async def delete_book(
 )->None:
     """Удалить книгу"""
     await service.delete(book_id)
+
+@router.post(
+    "/books/{book_id}/upload-img",
+    tags=["Books"],
+    summary="Загрузить картинки для книги",
+    status_code=status.HTTP_200_OK,
+    response_model=BookDetailResponse
+)
+async def upload_img_for_book(
+    book_id: int,
+    file: Annotated[UploadFile, File(description="Файл для загрузки")],
+    service: BookServiceDep,
+    user: Annotated[User, Depends(PermissionRequired(Permissions.BOOK_UPLOAD_IMG))]
+)->Book:
+    """Загрузить картинки для книги"""
+
+    try:
+        # В FastAPI seek() асинхронный, но принимает только 1 аргумент (offset)
+        # Чтобы узнать размер, мы читаем файл до конца
+        content = await file.read()
+        file_size = len(content)
+
+        # ВАЖНО: После чтения курсор в конце файла. Нужно вернуть его в начало,
+        # чтобы сервис мог прочитать файл заново.
+        await file.seek(0)
+
+        ImageUploadValidation.validate(file.content_type, file_size)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    return await service.upload_img(book_id, file)

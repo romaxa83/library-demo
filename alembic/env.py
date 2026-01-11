@@ -12,6 +12,7 @@ from src.config import config as app_config
 from src.books.models import Author, Book
 from src.rbac.models import Role, Permission
 from src.users.models import User
+from src.media.models import Media
 
 # Alembic Config object
 config = context.config

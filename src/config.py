@@ -116,6 +116,26 @@ class CacheConfig(BaseSettings):
     prefix: str = "app-cache"
     namespace: CacheNamespace = CacheNamespace()
 
+
+class MediaConfig(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env", env_prefix="MEDIA_", extra="ignore"
+    )
+    storage_type: str = "local"  # 'local' or 's3'
+    root_path: Path = BASE_DIR / "storage" / "media"
+
+    # Публичный путь (откуда будем раздавать статику)
+    public_path: Path = BASE_DIR / "public"
+
+    url_prefix: str = "/media"
+
+    # Конфигурация превью: имя: (ширина, высота)
+    thumbnails: dict[str, tuple[int, int]] = {
+        "small": (150, 150),
+        "medium": (600, 600)
+    }
+
+
 class Config(BaseSettings):
     app: AppConfig = AppConfig()
     db: DatabaseConfig = DatabaseConfig()
@@ -126,5 +146,6 @@ class Config(BaseSettings):
     cors: CORSConfig = CORSConfig()
     redis: RedisConfig = RedisConfig()
     cache: CacheConfig = CacheConfig()
+    media: MediaConfig = MediaConfig()
 
 config = Config()

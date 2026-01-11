@@ -6,6 +6,7 @@ from fastapi import FastAPI
 import os
 import signal
 
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import ORJSONResponse
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
@@ -54,6 +55,30 @@ app = FastAPI(
     title=config.app.name,
     default_response_class=ORJSONResponse,
     lifespan=lifespan,
+)
+
+# Создаем физическую папку в storage
+config.media.root_path.mkdir(parents=True, exist_ok=True)
+# Создаем папку public
+config.media.public_path.mkdir(parents=True, exist_ok=True)
+
+# Монтируем статику.
+# ВАЖНО: Если вы используете symlink public/media -> storage/media,
+# то FastAPI должен смотреть в public/media.
+media_dir = config.media.public_path / "media"
+
+if not media_dir.exists():
+    print(f"⚠️  ВНИМАНИЕ: Директория {media_dir} не найдена. Создаю физическую папку вместо ссылки.")
+    media_dir.mkdir(parents=True, exist_ok=True)
+
+
+# Раздаем всё содержимое папки public по корневому пути или через префикс
+# Теперь запрос http://app.com/media/book/1.jpg
+# пойдет в физическую папку public/media/book/1.jpg
+app.mount(
+    config.media.url_prefix,
+    StaticFiles(directory=config.media.public_path / "media"),
+    name="media"
 )
 
 register_errors_handlers(app)

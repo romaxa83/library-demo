@@ -1,10 +1,12 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func, select
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database import Base
+from src.media.models import Media
 
+BOOK_MORPH_NAME = "book"
 
 class Author(Base):
     __tablename__ = "authors"
@@ -42,6 +44,15 @@ class Book(Base):
 
     # Связь "многие к одному" с Author
     author: Mapped["Author"] = relationship("Author", back_populates="books")
+
+    # Полиморфная связь для картинок
+    images: Mapped[list["Media"]] = relationship(
+        "Media",
+        primaryjoin="and_(Book.id == foreign(remote(Media.entity_id)), Media.entity_type == 'book')",
+        viewonly=True,
+        # Позволяет подгружать через .options(selectinload(Book.images))
+        lazy="select"
+    )
 
     @property
     def is_deleted(self) -> bool:

@@ -1,8 +1,7 @@
 from datetime import datetime
 from enum import Enum
-
 from pydantic import BaseModel, ConfigDict, Field
-
+from src.media.schemas import MediaResponse
 
 # ==================== Author ====================
 class AuthorBase(BaseModel):
@@ -100,3 +99,4 @@ class BookDetailResponse(BookResponse):
     """Книга с вложенными объектами автора"""
 
     author: AuthorDetailResponse
+    images: list[MediaResponse] = []

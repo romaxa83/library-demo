@@ -1,17 +1,22 @@
 from datetime import datetime
+from typing import Any
+
+from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, joinedload
 
 from src.books.exceptions import AuthorNotFoundError, BookNotFoundError
-from src.books.models import Author, Book
+from src.books.models import Author, Book, BOOK_MORPH_NAME
 from src.books.schemas import AuthorCreate, AuthorFilterSchema, AuthorUpdate, BookCreate, BookUpdate, BookFilterSchema
+from src.media.service import MediaService
 from src.utils.pagination import PaginationHelper
 
 
 class BookService:
     def __init__(self, session: AsyncSession):
         self.session = session
+        self.media_service = MediaService(session)
 
     async def get_all_books(self, filters: BookFilterSchema) -> tuple[list[Book], int]:
         """
@@ -24,7 +29,11 @@ class BookService:
             Кортеж (список авторов, всего записей в БД)
         """
 
-        stmt = select(Book).options(selectinload(Book.author).joinedload(Author.books))
+        stmt = select(Book).options(
+            selectinload(Book.author)
+            .joinedload(Author.books),
+            selectinload(Book.images)
+        )
 
         # ✨ Фильтр по статусу удаления
         if filters.deleted == "active":
@@ -65,7 +74,11 @@ class BookService:
     async def get_by_id(self, book_id: int) -> Book:
         """Получить книгу по ID"""
         stmt = (select(Book)
-                .options(selectinload(Book.author).joinedload(Author.books))
+                .options(
+                    selectinload(Book.author)
+                    .joinedload(Author.books)
+                    .selectinload(Book.images)
+                )
                 .where(Book.id == book_id))
         model = await self.session.scalar(stmt)
 
@@ -110,6 +123,17 @@ class BookService:
         model = await self.get_by_id(book_id)
         model.deleted_at = datetime.now()
         await self.session.commit()
+
+    async def upload_img(self, book_id: int, file: UploadFile) -> Book:
+        """Загрузить картинку"""
+
+        await self.media_service.upload_image(
+            file=file,
+            entity_type=BOOK_MORPH_NAME,
+            entity_id=book_id,
+        )
+
+        return await self.get_by_id(book_id)
 
     async def _validate_author_exists(self, author_id: int) -> None:
         """Проверить существование автора"""

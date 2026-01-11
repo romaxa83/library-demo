@@ -23,6 +23,16 @@ up: docker_up ## составная команда, для поднятия пр
 #build: ## собирает контейнеры
 #	docker compose build --build-arg USER_ID=${UID} --build-arg GROUP_ID=${GID}
 
+.PHONY: storage_link
+storage_link: ## создание символьной ссылки: public/media -> storage/media
+	mkdir -p storage/media
+	mkdir -p public
+	# Удаляем старую ссылку/папку если есть
+	rm -rf public/media
+	# Создаем ссылку. В macOS/Linux лучше использовать относительный путь внутри папки
+	cd public && ln -s ../storage/media media
+	echo "✅ Символьная ссылка создана: public/media -> storage/media"
+
 .PHONY: start_app
 start_app: ## запускаем сервер
 	python -m src.main
