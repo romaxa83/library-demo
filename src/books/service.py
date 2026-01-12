@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Any
+import json
 
 from fastapi import UploadFile
 from sqlalchemy import select
@@ -86,6 +87,10 @@ class BookService:
             raise BookNotFoundError(book_id)
 
         return model
+
+    async def find_by_title(self, title: str) -> Book|None:
+        stmt = select(Book).where(Book.title == title)
+        return await self.session.scalar(stmt)
 
     async def create(self, data: BookCreate) -> Book:
         """Создать новую книгу"""
@@ -191,6 +196,12 @@ class BookService:
             raise AuthorNotFoundError(author_id)
         return model
 
+    async def find_author_by_name(self, name: str) -> Author|None:
+        """Получить автора по имени"""
+        stmt = (select(Author)
+                .where(Author.name == name))
+        return await self.session.scalar(stmt)
+
     async def create_author(self, data: AuthorCreate) -> Author:
         """Создать нового автора"""
         model = Author(**data.model_dump())
@@ -249,3 +260,31 @@ class BookService:
         # Полностью удаляем из БД
         await self.session.delete(author)
         await self.session.commit()
+
+    async def import_json_to_db(self, file_path: str) -> None:
+        print(file_path)
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        for entry in data:
+            author_name = entry.get("author")
+            author = await self.find_author_by_name(author_name)
+            if author is None:
+                author = await self.create_author(AuthorCreate(
+                    name=author_name,
+                    description=entry.get("description"),
+                ))
+
+            for item in entry.get("titles", []):
+                book_title = item.get("name")
+                book = await self.find_by_title(book_title)
+                print(book_title)
+                if book is None:
+                    await self.create(
+                        BookCreate(
+                            title=book_title,
+                            description=item.get("description"),
+                            page=item.get("page"),
+                            author_id=author.id
+                        )
+                    )

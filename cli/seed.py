@@ -3,9 +3,10 @@ import typer
 from datetime import datetime
 from sqlalchemy import select
 
-from src.config import Config
+from src.config import config, BASE_DIR
 from src.database import init_db, dispose
 from src.rbac.service import RbacService
+from src.books.service import BookService
 from src.users.models import User
 from src.auth import utils as auth_utils
 from src.rbac.models import Role
@@ -13,7 +14,6 @@ from src.rbac.permissions import DefaultRole
 from src.rbac.exceptions import RoleNotFoundByAliasError
 
 seed_app = typer.Typer()
-config = Config()
 
 
 def coro(f):
@@ -87,6 +87,24 @@ async def superadmin():
 
             print("✅ Создан супер-админ")
 
+        except Exception as e:
+            print(f"❌ Ошибка: {e}")
+        finally:
+            await dispose()
+
+@seed_app.command()
+@coro
+async def books():
+    """Запуск сидера для загрузки тестовых данных, запуск - python -m cli.main seed books"""
+    init_db()
+    from src.database import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as db:
+        path = BASE_DIR / "storage" / "book_data.json"
+        service = BookService(db)
+        try:
+            await service.import_json_to_db(path)
+            print("✅ Загружены книги")
         except Exception as e:
             print(f"❌ Ошибка: {e}")
         finally:
