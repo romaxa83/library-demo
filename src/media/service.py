@@ -65,7 +65,7 @@ class MediaService:
         return output.getvalue()
 
     async def delete_media(self, media_id: int):
-        from sqlalchemy import select
+
         media = await self.session.get(Media, media_id)
         if media:
             await self.storage.delete(media.path)

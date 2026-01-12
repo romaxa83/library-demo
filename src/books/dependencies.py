@@ -1,5 +1,4 @@
 from typing import Annotated
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi import Depends
 
 from src.books.service import BookService

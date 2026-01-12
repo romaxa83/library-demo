@@ -10,6 +10,7 @@ class PermissionGroup(Enum):
     AUTHOR     = "author"
     BOOK       = "book"
     PERMISSION = "permission"
+    MEDIA      = "media"
 
 class  Permissions(Enum):
     # Action by user
@@ -43,6 +44,8 @@ class  Permissions(Enum):
     BOOK_UPDATE     = f"{PermissionGroup.BOOK.value}.update"
     BOOK_DELETE     = f"{PermissionGroup.BOOK.value}.delete"
     BOOK_UPLOAD_IMG = f"{PermissionGroup.BOOK.value}.upload_img"
+
+    MEDIA_DELETE = f"{PermissionGroup.MEDIA.value}.delete"
 
 
 def get_permissions_for_seed():
@@ -80,6 +83,9 @@ def get_permissions_for_seed():
             {"alias": Permissions.BOOK_UPDATE.value, "description": "Редактировать книгу"},
             {"alias": Permissions.BOOK_DELETE.value, "description": "Удалить книгу"},
             {"alias": Permissions.BOOK_UPLOAD_IMG.value, "description": "Загрузить картинок для книг"},
+        ],
+        PermissionGroup.MEDIA.value: [
+            {"alias": Permissions.MEDIA_DELETE.value, "description": "Удалить файл"},
         ],
     }
 

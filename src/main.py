@@ -13,6 +13,7 @@ from fastapi_cache.backends.redis import RedisBackend
 from redis.asyncio import Redis
 
 from src.books.router import router as books_router
+from src.media.router import router as media_router
 from src.auth.controller import router as auth_router
 from src.rbac.controller import router as rbac_router
 from src.config import config
@@ -84,9 +85,12 @@ app.mount(
 register_errors_handlers(app)
 register_middlewares(app)
 
+
 app.include_router(auth_router)
 app.include_router(rbac_router)
 app.include_router(books_router)
+app.include_router(media_router)
+
 
 @app.get("/")
 def info():
