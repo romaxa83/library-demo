@@ -32,7 +32,9 @@ dependencies = [
     "pytest-env (>=1.2.0,<2.0.0)",
     "pillow (>=12.1.0,<13.0.0)",
     "aiofiles (>=25.1.0,<26.0.0)",
-    "python-magic (>=0.4.27,<0.5.0)"
+    "python-magic (>=0.4.27,<0.5.0)",
+    "pandas (>=2.3.3,<3.0.0)",
+    "openpyxl (>=3.1.5,<4.0.0)"
 ]
 
 [dependency-groups]

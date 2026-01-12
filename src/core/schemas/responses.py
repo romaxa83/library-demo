@@ -14,3 +14,6 @@ class ErrorResponse(MsgResponse):
 
 class ResponseList(BaseModel, Generic[T]):
     data: list[T] = Field(description="Данные")
+
+class ErrorBaseResponse(BaseModel):
+    detail: str

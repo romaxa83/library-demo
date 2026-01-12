@@ -1,5 +1,9 @@
+import io
 from typing import Annotated
+
+import pandas as pd
 from fastapi import APIRouter, Query, status, Depends, UploadFile, File, HTTPException
+from starlette.responses import StreamingResponse
 
 from src.media.schemas import ImageUploadValidation
 from src.rbac.dependencies import PermissionRequired
@@ -20,8 +24,13 @@ from src.books.schemas import (
 from src.books.models import Book, Author
 from src.users.models import User
 from src.utils.pagination import PaginatedResponse, PaginationHelper
+from fastapi.security import HTTPBearer
 
-router = APIRouter()
+security = HTTPBearer()
+
+router = APIRouter(
+    dependencies=[Depends(security)]
+)
 
 
 # ==================== AUTHORS ====================
@@ -271,3 +280,59 @@ async def upload_img_for_book(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     return await service.upload_img(book_id, file)
+
+
+@router.post(
+    "/books/export-to-excel",
+    tags=["Books"],
+    summary="Выгрузить книги в Excel",
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {
+            "content": {"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}},
+            "description": "Возвращает Excel файл с данными о книгах",
+        }
+    }
+)
+async def export_to_excel(
+    service: BookServiceDep,
+    user: Annotated[User, Depends(PermissionRequired(Permissions.BOOK_EXPORT))]
+):
+    buffer = await service.export_to_excel()
+
+    # Отправляем файл пользователю
+    headers = {
+        'Content-Disposition': 'attachment; filename="books_export.xlsx"'
+    }
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers=headers
+    )
+
+@router.post(
+    "/books/export-to-csv",
+    tags=["Books"],
+    summary="Выгрузить книги в CSV",
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {
+            "content": {"text/csv": {}},
+            "description": "Возвращает CSV файл с данными о книгах",
+        }
+    }
+)
+async def export_to_csv(
+    service: BookServiceDep,
+    user: Annotated[User, Depends(PermissionRequired(Permissions.BOOK_EXPORT))]
+):
+    buffer = await service.export_to_csv()
+
+    headers = {
+        'Content-Disposition': 'attachment; filename="books_export.csv"'
+    }
+    return StreamingResponse(
+        buffer,
+        media_type="text/csv",
+        headers=headers
+    )

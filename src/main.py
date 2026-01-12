@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, status
 import os
 import signal
 
@@ -13,6 +13,7 @@ from fastapi_cache.backends.redis import RedisBackend
 from redis.asyncio import Redis
 
 from src.books.router import router as books_router
+from src.core.schemas.responses import ErrorBaseResponse
 from src.media.router import router as media_router
 from src.auth.controller import router as auth_router
 from src.rbac.controller import router as rbac_router
@@ -52,10 +53,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await dispose()
     # await redis.close()
 
+
+# Общие ответы
+COMMON_RESPONSES = {
+    status.HTTP_401_UNAUTHORIZED: {"model": ErrorBaseResponse, "description": "Не авторизован (отсутствует или неверный токен)"},
+    status.HTTP_403_FORBIDDEN: {"model": ErrorBaseResponse, "description": "Доступ запрещен (недостаточно прав)"},
+}
+
 app = FastAPI(
     title=config.app.name,
     default_response_class=ORJSONResponse,
     lifespan=lifespan,
+    responses=COMMON_RESPONSES
 )
 
 # Создаем физическую папку в storage

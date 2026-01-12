@@ -1,7 +1,9 @@
+import io
 from datetime import datetime
 from typing import Any
 import json
 
+import pandas as pd
 from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -288,3 +290,55 @@ class BookService:
                             author_id=author.id
                         )
                     )
+
+    async def export_to_excel(self):
+
+        stmt = select(Book).options(selectinload(Book.author))
+        result = await self.session.execute(stmt)
+        books = result.scalars().all()
+
+        # Формируем список словарей вручную для DataFrame
+        data = [
+            {
+                "ID": b.id,
+                "Название": b.title,
+                "Описание": b.description,
+                "Автор": b.author.name if b.author else "Не указан"
+            }
+            for b in books
+        ]
+
+        df = pd.DataFrame(data)
+
+        # Сохраняем Excel в буфер (в память)
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Books')
+
+        buffer.seek(0)  # Возвращаем указатель в начало файла
+
+        return buffer
+
+    async def export_to_csv(self):
+        stmt = select(Book).options(selectinload(Book.author))
+        result = await self.session.execute(stmt)
+        books = result.scalars().all()
+
+        data = [
+            {
+                "ID": b.id,
+                "Title": b.title,
+                "Author": b.author.name if b.author else "N/A"
+            }
+            for b in books
+        ]
+
+        df = pd.DataFrame(data)
+
+        # Сохраняем в текстовый буфер
+        buffer = io.StringIO()
+        df.to_csv(buffer, index=False, sep=';', encoding='utf-8-sig')
+
+        # Конвертируем текстовый буфер в байтовый для StreamingResponse
+        content = buffer.getvalue().encode('utf-8-sig')
+        return io.BytesIO(content)
