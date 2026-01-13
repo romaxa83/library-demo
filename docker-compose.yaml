@@ -39,6 +39,27 @@ services:
     volumes:
       - /var/lib/postgresql/data
 
+  rabbitmq:
+    image: rabbitmq:4.1-management
+    container_name: ${APP_NAME}__rabbitmq
+    hostname: ${APP_NAME}__rabbitmq
+    platform: linux/arm64
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      # Проверяет, готов ли узел принимать подключения
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity" ]
+      interval: 10s     # Как часто проверять
+      timeout: 5s       # Сколько ждать ответа
+      retries: 5        # Сколько попыток до статуса "unhealthy"
+      start_period: 15s # Время на "раскачку" после старта
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
   redis:
     image: redis:alpine
     environment:
@@ -73,3 +94,6 @@ volumes:
   redis_data:
     driver: local
     name: ${APP_NAME}_redis_data
+  rabbitmq_data:
+    driver: local
+    name: ${APP_NAME}_rabbitmq_data

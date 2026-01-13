@@ -11,6 +11,13 @@ class UserBase(BaseModel):
     email: EmailStr
     password: bytes
 
+class UserSimple(BaseModel):
+    model_config = ConfigDict(from_attributes=True, strict=True)
+
+    id: int
+    username: str
+    email: EmailStr
+
 class UserRegister(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

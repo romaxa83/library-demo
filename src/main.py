@@ -23,6 +23,7 @@ from src.logger import init_logger
 from src.core.errors.errors_handlers import register_errors_handlers
 from src.core.middlewares.middlewares import register_middlewares
 from src.core.middlewares.requests_count import requests_count_middleware_dispatch
+from src.faststream.broker import broker
 
 
 @asynccontextmanager
@@ -39,7 +40,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         # encoding="utf8",
         # decode_responses=True
     )
-
     # Проверяем соединение
     await redis.ping()
 
@@ -48,9 +48,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         prefix=config.cache.prefix,
     )
 
+    # FastStream (RabbitMQ)
+    await broker.start()
+
     yield
     # shutdown
     await dispose()
+    # FastStream (RabbitMQ)
+    await broker.stop()
     # await redis.close()
 
 
@@ -94,7 +99,6 @@ app.mount(
 register_errors_handlers(app)
 register_middlewares(app)
 
-
 app.include_router(auth_router)
 app.include_router(rbac_router)
 app.include_router(books_router)
@@ -121,6 +125,15 @@ def info():
 def stop_server():
     print("Получен запрос на остановку сервера. Завершаем...")
     os.kill(os.getpid(), signal.SIGKILL)
+
+@app.get("/health")
+async def health_check():
+    try:
+        # Обязательно указываем именованный аргумент timeout
+        await broker.ping(timeout=5.0)
+        return {"status": "ok", "rabbit": "connected"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}, 500
 
 if __name__ == "__main__":
     uvicorn.run("src.main:app", reload=True)

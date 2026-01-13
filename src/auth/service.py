@@ -17,7 +17,7 @@ from src.rbac.permissions import DefaultRole
 from datetime import datetime, timezone
 from src.users.schemas import (
     UserRegister,
-    UserLogin,
+    UserLogin, UserSimple,
 )
 from src.auth.schemas import (
     TokenResponse,
@@ -38,6 +38,7 @@ from src.users.exceptions import (
     UserAlreadyExistsError
 )
 from loguru import logger
+from src.faststream.broker import broker
 
 http_bearer = HTTPBearer()
 
@@ -66,12 +67,19 @@ class AuthService:
 
         model = await self.user_service.get_by_id(model.id)
 
-        verify_token = auth_utils.create_verify_email_token({
-            "sub": str(model.id),
-            "email": model.email,
-        })
+        # отправка перенесена в брокер сообщений
+        # verify_token = auth_utils.create_verify_email_token({
+        #     "sub": str(model.id),
+        #     "email": model.email,
+        # })
+        #
+        # await send_verification_email(model, verify_token)
 
-        await send_verification_email(model, verify_token)
+        await broker.publish(
+            message=model.id,
+            queue="user-registered"
+        )
+
 
         return model
 

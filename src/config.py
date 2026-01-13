@@ -135,6 +135,21 @@ class MediaConfig(BaseSettings):
         "medium": (600, 600)
     }
 
+class RabbitMQConfig(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env", env_prefix="RABBITMQ_", extra="ignore"
+    )
+    # значение по умолчанию
+    host: str = "localhost"
+    port: int = 5672
+    password: str = "password"
+    user: str = "root"
+
+    # "amqp://guest:guest@localhost:5672/"
+    @property
+    def url(self) -> str:
+        return f"amqp://{self.user}:{self.password}@{self.host}:{self.port}/"
+
 
 class Config(BaseSettings):
     app: AppConfig = AppConfig()
@@ -147,5 +162,6 @@ class Config(BaseSettings):
     redis: RedisConfig = RedisConfig()
     cache: CacheConfig = CacheConfig()
     media: MediaConfig = MediaConfig()
+    rabbitmq: RabbitMQConfig = RabbitMQConfig()
 
 config = Config()

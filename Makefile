@@ -37,6 +37,14 @@ storage_link: ## создание символьной ссылки: public/medi
 start_app: ## запускаем сервер
 	python -m src.main
 
+.PHONY: queue_start
+queue_start: ## запускаем брокер очередей (Faststream + RabbitMQ)
+	python -m faststream run src.faststream.app:app
+
+.PHONY: queue_docs
+queue_docs: ## запускаем сервер с документацией очередей
+	python -m faststream docs serve src.faststream.app:app --port 8081
+
 .PHONY: docker_up
 docker_up: ## подымает контейнеры
 	docker-compose up -d

@@ -5,7 +5,6 @@ from typing import Generic, Tuple, TypeVar
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
 from sqlalchemy.sql import Select
 
 T = TypeVar("T")  # Generic тип для моделей
