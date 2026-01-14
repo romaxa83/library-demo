@@ -47,6 +47,9 @@ wheels/
 
 # Логи
 *.log
+logs/postgresql/*.log
+logs/postgresql/*.json
+logs/*.log
 
 # Ключи
 *.pem

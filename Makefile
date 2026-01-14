@@ -37,6 +37,12 @@ storage_link: ## создание символьной ссылки: public/medi
 start_app: ## запускаем сервер
 	python -m src.main
 
+.PHONY: generate_key
+generate_key: ## Генерирует приватный и публичный ключ для создания jwt
+	openssl genrsa -out jwt-private.pem 2048
+	openssl rsa -in jwt-private.pem -outform PEM -pubout -out jwt-public.pem
+	echo "✅ Сгенерированы private и public ключи в корне проекта"
+
 .PHONY: queue_start
 queue_start: ## запускаем брокер очередей (Faststream + RabbitMQ)
 	python -m faststream run src.faststream.app:app
@@ -45,9 +51,13 @@ queue_start: ## запускаем брокер очередей (Faststream + R
 queue_docs: ## запускаем сервер с документацией очередей
 	python -m faststream docs serve src.faststream.app:app --port 8081
 
+.PHONY: app_structure
+app_structure: ## Выведет структуру проекта
+	python -m cli.main structure show
+
 .PHONY: docker_up
 docker_up: ## подымает контейнеры
-	docker-compose up -d
+	docker-compose up --build -d
 
 .PHONY: down
 down: ## останавливает контейнеры и удаляет их образы

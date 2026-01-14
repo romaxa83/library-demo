@@ -1,10 +1,7 @@
 from fastapi import APIRouter, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jwt import InvalidTokenError
-from loguru import logger
 
 from src.auth.dependencies import AuthServiceDep, CurrentUserDep
-from src.auth.exceptions import UnauthorizedError
 from src.users.models import User
 from src.users.schemas import (
     UserRegister,

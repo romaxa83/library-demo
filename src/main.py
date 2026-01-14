@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import ORJSONResponse
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
+from prometheus_fastapi_instrumentator import Instrumentator
 from redis.asyncio import Redis
 
 from src.books.router import router as books_router
@@ -71,6 +72,8 @@ app = FastAPI(
     lifespan=lifespan,
     responses=COMMON_RESPONSES
 )
+
+Instrumentator().instrument(app).expose(app, endpoint='/__internal_metrics__')
 
 # Создаем физическую папку в storage
 config.media.root_path.mkdir(parents=True, exist_ok=True)
