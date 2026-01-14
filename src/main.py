@@ -1,8 +1,9 @@
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from functools import lru_cache
+from typing import AsyncGenerator, Annotated
 
 import uvicorn
-from fastapi import FastAPI, status
+from fastapi import FastAPI, status, Request, Depends, HTTPException
 import os
 import signal
 
@@ -14,6 +15,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from redis.asyncio import Redis
 
 from src.books.router import router as books_router
+from src.core.RateLimit import RateLimit
 from src.core.schemas.responses import ErrorBaseResponse
 from src.media.router import router as media_router
 from src.auth.controller import router as auth_router
@@ -27,6 +29,47 @@ from src.core.middlewares.requests_count import requests_count_middleware_dispat
 from src.faststream.broker import broker
 
 
+@lru_cache
+def get_redis() -> Redis:
+    return Redis(
+        host=config.redis.host,
+        port=config.redis.port,
+        # password=config.redis.password,
+        # encoding="utf8",
+        # decode_responses=True
+    )
+
+@lru_cache
+def get_rate_limiter() -> RateLimit:
+    return RateLimit(redis=get_redis())
+
+# позволяет создавать для разных роутов свои rate-limit
+def rate_limiter_factory(
+    endpoint: str,
+    max_requests: int,
+    window_seconds: int,
+):
+    async def _rate_limiter(
+        request: Request,
+        rate_limiter: Annotated[RateLimit, Depends(get_rate_limiter)],
+    ):
+        ip_address = request.client.host
+
+        limited = await rate_limiter.is_limited(
+            ip_address=ip_address,
+            endpoint=endpoint,
+            max_requests=max_requests,
+            window_seconds=window_seconds,
+        )
+
+        if limited:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Rate limit exceeded",
+            )
+
+    return _rate_limiter
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # startup
@@ -34,14 +77,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     init_db(config.db.url)
     init_logger()
 
-    redis = Redis(
-        host=config.redis.host,
-        port=config.redis.port,
-        # password=config.redis.password,
-        # encoding="utf8",
-        # decode_responses=True
-    )
-    # Проверяем соединение
+    redis = get_redis()
+    # Проверяем соединение редиса
     await redis.ping()
 
     FastAPICache.init(
@@ -57,7 +94,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await dispose()
     # FastStream (RabbitMQ)
     await broker.stop()
-    # await redis.close()
+    await redis.aclose()
 
 
 # Общие ответы
@@ -108,7 +145,10 @@ app.include_router(books_router)
 app.include_router(media_router)
 
 
-@app.get("/")
+rate_limit_info = rate_limiter_factory("info", 5, 5)
+rate_limit_health = rate_limiter_factory("info", 3, 10)
+
+@app.get("/", dependencies=[Depends(rate_limit_info)])
 def info():
     return {
         "app": config.app.name,
@@ -124,12 +164,7 @@ def info():
 
     }
 
-@app.get("/stop")
-def stop_server():
-    print("Получен запрос на остановку сервера. Завершаем...")
-    os.kill(os.getpid(), signal.SIGKILL)
-
-@app.get("/health")
+@app.get("/health", dependencies=[Depends(rate_limit_health)])
 async def health_check():
     try:
         # Обязательно указываем именованный аргумент timeout
@@ -137,6 +172,11 @@ async def health_check():
         return {"status": "ok", "rabbit": "connected"}
     except Exception as e:
         return {"status": "error", "message": str(e)}, 500
+
+@app.get("/stop")
+def stop_server():
+    print("Получен запрос на остановку сервера. Завершаем...")
+    os.kill(os.getpid(), signal.SIGKILL)
 
 if __name__ == "__main__":
     uvicorn.run("src.main:app", reload=True)

@@ -79,6 +79,11 @@ services:
       timeout: 10s
       retries: 20
 
+#  redis_gui:
+#    image: redis/redisinsight
+#    ports:
+#      - 5540:5540
+
   mailer:
     image: axllent/mailpit:latest
     container_name: ${APP_NAME}__mailer
