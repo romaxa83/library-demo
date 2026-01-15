@@ -51,6 +51,10 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+      - "15692:15692" # Порт для Prometheus
+    # Команда для включения плагина (для прометеуса) при старте
+    command: >
+      sh -c "rabbitmq-plugins enable rabbitmq_prometheus && rabbitmq-server"
     healthcheck:
       # Проверяет, готов ли узел принимать подключения
       test: [ "CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity" ]
@@ -79,10 +83,10 @@ services:
       timeout: 10s
       retries: 20
 
-#  redis_gui:
-#    image: redis/redisinsight
-#    ports:
-#      - 5540:5540
+  redis_gui:
+    image: redis/redisinsight
+    ports:
+      - 5540:5540
 
   mailer:
     image: axllent/mailpit:latest
@@ -163,7 +167,7 @@ services:
     env_file:
       - .env
     environment:
-      DATA_SOURCE_NAME: postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/postgres?sslmode=disable
+      DATA_SOURCE_NAME: postgresql://${DB_USERNAME}:${DB_PASSWORD}@db:${DB_PORT}/postgres?sslmode=disable
 #    ports:
 #      - "9187:9187"
     restart: always
