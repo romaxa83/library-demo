@@ -6,8 +6,8 @@ scrape_configs:
   - job_name: 'fastapi'
     metrics_path: '/__internal_metrics__'  # путь на FastAPI для сбора метрик
     static_configs:
-      - targets: ['host.docker.internal:8000']  # если приложение крутится не в контейнере, а на хостовой машине
-#      - targets: ['127.0.0.1:8000']  # где найти приложение (host:port), "app" = имя контейнера
+#      - targets: ['host.docker.internal:8000']  # если приложение крутится не в контейнере, а на хостовой машине
+      - targets: ['app:8000']  # где найти приложение (host:port), "app" = имя контейнера
 
   - job_name: 'node_exporter'
     static_configs:
@@ -21,6 +21,6 @@ scrape_configs:
     static_configs:
       - targets: [ 'rabbitmq:15692' ]
 
-#  - job_name: 'nginx_exporter'
-#    static_configs:
-#      - targets: ['nginx_exporter:9113']
+  - job_name: 'nginx_exporter'
+    static_configs:
+      - targets: ['nginx_exporter:9113']

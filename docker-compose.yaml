@@ -1,9 +1,53 @@
 services:
 
+  nginx:
+    image: nginx:alpine
+    container_name: ${APP_NAME}__nginx
+    restart: unless-stopped
+    platform: linux/arm64
+    build:
+      context: .
+      dockerfile: infrastructures/nginx/Dockerfile
+    ports:
+      - 80:80
+    volumes:
+      - ./:/app
+      - ./public:/public:ro
+      - ./logs/nginx:/var/log/nginx
+    working_dir: /app
+    healthcheck:
+      # Проверяем доступность страницы stub_status
+      test: [ "CMD-SHELL", "wget -qO- http://127.0.0.1/stub_status || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  app:
+    container_name: ${APP_NAME}__app
+    build:
+      context: .
+      dockerfile: infrastructures/app/Dockerfile
+    working_dir: /app
+    volumes:
+      - ./:/app/
+    environment:
+      - DB_HOST=db
+      - REDIS_HOST=redis
+      - RABBITMQ_HOST=rabbitmq
+    # Если используете FastAPI, переопределяем команду для авторелоада
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   db:
     image: &db-image postgres:18-alpine
     container_name: ${APP_NAME}__db
-    hostname: ${APP_NAME}__db
     platform: linux/arm64
     ports:
       - ${DB_PORT}:${DB_PORT}
@@ -26,7 +70,6 @@ services:
   db_test:
     image: *db-image
     container_name: ${APP_NAME}__db_test
-    hostname: ${APP_NAME}__db_test
     platform: linux/arm64
     restart: unless-stopped
     # розширюємо кількість одночасних підключень до Postgres БД та кількість транзакцій. Важливо для комфортного запуску паралельних тестів.
@@ -43,7 +86,6 @@ services:
   rabbitmq:
     image: rabbitmq:4.1-management
     container_name: ${APP_NAME}__rabbitmq
-    hostname: ${APP_NAME}__rabbitmq
     platform: linux/arm64
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
@@ -64,13 +106,13 @@ services:
       start_period: 15s # Время на "раскачку" после старта
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+      - ./infrastructures/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
 
   redis:
     image: redis:alpine
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     container_name: ${APP_NAME}__redis
-    hostname: ${APP_NAME}__redis
     platform: linux/arm64
     ports:
       - ${REDIS_PORT}:${REDIS_PORT}
@@ -85,6 +127,7 @@ services:
 
   redis_gui:
     image: redis/redisinsight
+    container_name: ${APP_NAME}__redis_gui
     ports:
       - 5540:5540
 
@@ -99,7 +142,6 @@ services:
   prometheus:
     image: prom/prometheus:v3.2.1
     container_name: ${APP_NAME}__prometheus
-    hostname: ${APP_NAME}__prometheus
     networks:
       default:
         aliases:
@@ -123,7 +165,6 @@ services:
   grafana:
     image: grafana/grafana:11.6.0
     container_name: ${APP_NAME}__grafana
-    hostname: ${APP_NAME}__grafana
     volumes:
       - grafana_data:/var/lib/grafana
       - ./infrastructures/grafana/provisioning:/etc/grafana/provisioning
@@ -144,8 +185,29 @@ services:
       retries: 3
       start_period: 20s
 
+  nginx_exporter:
+    image: nginx/nginx-prometheus-exporter:latest
+    container_name: ${APP_NAME}__nginx_exporter
+    #    ports:
+    #     - "9113:9113"
+    command:
+      - '-nginx.scrape-uri=http://nginx/stub_status'
+    restart: always
+    depends_on:
+      nginx:
+        condition: service_healthy
+    healthcheck:
+      # Проверяем, что порт 9113 отвечает
+      test: [ "CMD", "/usr/bin/nginx-prometheus-exporter", "-version" ] # Простая проверка бинарника
+      # Или более надежно через проверку порта (если в образе есть nc или curl):
+      # test: ["CMD-SHELL", "nc -z localhost 9113 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   node_exporter:
     image: prom/node-exporter:latest
+    container_name: ${APP_NAME}__node_exporter
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -161,9 +223,9 @@ services:
   postgres_exporter:
     image: prometheuscommunity/postgres-exporter:latest
     container_name: ${APP_NAME}__postgres_exporter
-    hostname: ${APP_NAME}__postgres_exporter
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     env_file:
       - .env
     environment:

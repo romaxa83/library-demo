@@ -63,6 +63,13 @@ docker_up: ## подымает контейнеры
 down: ## останавливает контейнеры и удаляет их образы
 	docker-compose down --remove-orphans #очистит все запущенные контейнеры
 
+.PHONY: build
+build: ## собирает контейнеры
+	docker-compose build
+
+.PHONY: rebuild
+rebuild: down build up ## составная команда, для перезапуска контейнера [down -> build -> up]
+
 .PHONY: ps
 ps:	## информация по контейнерам докера
 	docker-compose ps
