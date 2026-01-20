@@ -1,3 +1,4 @@
+from functools import lru_cache
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -5,7 +6,10 @@ BASE_DIR = Path(__file__).parent.parent
 
 class AppConfig(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env", env_prefix="APP_", extra="ignore"  # автоматически добавит префикс APP_
+        env_file=".env",
+        env_prefix="APP_" ,# автоматически добавит префикс APP_
+        extra="ignore",
+        frozen = True  # Объект станет неизменяемым (hashable)
     )
     # значение по умолчанию
     name: str = "App"
@@ -20,10 +24,10 @@ class AppConfig(BaseSettings):
 
 class LoggerLoguruConfig(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env", env_prefix="LOG_", extra="ignore"
+        env_file=".env", env_prefix="LOG_", extra="ignore", frozen = True
     )
     # значение по умолчанию
-    path: str = "logs/app.log" # файл для записей логов
+    path: str = "logs/app/app.log" # файл для записей логов
     level: str = "INFO"        # уровень логирования
     rotation: str = "10 MB"    # ротация файла при достижении предела, 10MB
     retention: str = "1 month" # как долго хранятся старые логи
@@ -32,7 +36,7 @@ class LoggerLoguruConfig(BaseSettings):
 
 class AuthJWTConfig(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env", env_prefix="AUTH_JWT_", extra="ignore"
+        env_file=".env", env_prefix="AUTH_JWT_", extra="ignore", frozen = True
     )
     # значение по умолчанию
     private_key_path: Path = BASE_DIR / "jwt-private.pem" # путь к приватному ключу
@@ -44,14 +48,14 @@ class AuthJWTConfig(BaseSettings):
 
 class EmailConfig(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env", env_prefix="EMAIL_", extra="ignore"
+        env_file=".env", env_prefix="EMAIL_", extra="ignore", frozen = True
     )
     # значение по умолчанию
     verify_token_expired: int = 60 # время жизни токена для подтверждения почты
 
 class MailConfig(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env", env_prefix="MAIL_", extra="ignore"
+        env_file=".env", env_prefix="MAIL_", extra="ignore", frozen = True
     )
     # значение по умолчанию
     host: str = "127.0.0.1"
@@ -64,7 +68,7 @@ class MailConfig(BaseSettings):
 class CORSConfig(BaseSettings):
     """Конфигурация CORS"""
     model_config = SettingsConfigDict(
-        env_file=".env", env_prefix="CORS_", extra="ignore"
+        env_file=".env", env_prefix="CORS_", extra="ignore", frozen = True
     )
     # значение по умолчанию
     allow_origins: list[str] = [
@@ -78,7 +82,7 @@ class CORSConfig(BaseSettings):
 
 class DatabaseConfig(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env", env_prefix="DB_", extra="ignore"
+        env_file=".env", env_prefix="DB_", extra="ignore", frozen = True
     )
     # значение по умолчанию
     host: str = "localhost"
@@ -96,7 +100,7 @@ class RedisDB(BaseSettings):
 
 class RedisConfig(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env", env_prefix="REDIS_", extra="ignore"
+        env_file=".env", env_prefix="REDIS_", extra="ignore", frozen = True
     )
     # значение по умолчанию
     host: str = "localhost"
@@ -119,7 +123,7 @@ class CacheConfig(BaseSettings):
 
 class MediaConfig(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env", env_prefix="MEDIA_", extra="ignore"
+        env_file=".env", env_prefix="MEDIA_", extra="ignore", frozen = True
     )
     storage_type: str = "local"  # 'local' or 's3'
     root_path: Path = BASE_DIR / "storage" / "media"
@@ -137,7 +141,7 @@ class MediaConfig(BaseSettings):
 
 class RabbitMQConfig(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env", env_prefix="RABBITMQ_", extra="ignore"
+        env_file=".env", env_prefix="RABBITMQ_", extra="ignore", frozen=True
     )
     # значение по умолчанию
     host: str = "localhost"
@@ -164,4 +168,8 @@ class Config(BaseSettings):
     media: MediaConfig = MediaConfig()
     rabbitmq: RabbitMQConfig = RabbitMQConfig()
 
-config = Config()
+@lru_cache
+def get_config() -> Config:
+    return Config()
+
+config = get_config()

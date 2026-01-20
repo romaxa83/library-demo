@@ -74,6 +74,10 @@ rebuild: down build up ## составная команда, для переза
 ps:	## информация по контейнерам докера
 	docker-compose ps
 
+.PHONY: app_bash
+app_bash: ## зайти в контейнер приложения
+	docker-compose exec app bash
+
 .PHONY: venv
 venv: ## активируем виртуальное окружение
 	source venv/bin/activate
@@ -85,3 +89,8 @@ run_test: ## запускает тесты
 .PHONY: run_test_async
 run_test_async: ## запускает тесты
 	 pytest -vvs --tb=short -l -n auto
+
+# запуск make install pkg=httpx
+install:
+	docker exec -it ${APP_NAME}__app pip install $(pkg)
+	docker exec -it ${APP_NAME}__app pip freeze > requirements.txt

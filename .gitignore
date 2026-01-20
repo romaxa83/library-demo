@@ -47,8 +47,11 @@ wheels/
 
 # Логи
 *.log
+logs/app/*.log
+logs/app/*.log.zip
 logs/postgresql/*.log
 logs/postgresql/*.json
+logs/nginx/*.log
 logs/*.log
 
 # Ключи

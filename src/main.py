@@ -1,6 +1,7 @@
 import uvicorn
 import os
 import signal
+import httpx
 
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
@@ -76,8 +77,44 @@ setup_app_mounts(app)
 rate_limit_info = rate_limiter_factory("info", 5, 5)
 rate_limit_health = rate_limiter_factory("info", 3, 10)
 
+
+async def check_worker_via_api() -> bool:
+    # URL для получения информации об очередях
+    # rabbitmq — это имя сервиса в docker-compose
+    url = f"http://{config.rabbitmq.host}:15672/api/queues/%2f/user-registered"
+
+    auth = (config.rabbitmq.user, config.rabbitmq.password)
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, auth=auth, timeout=2.0)
+            if response.status_code == 200:
+                data = response.json()
+                # consumers — количество активных обработчиков на этой очереди
+                return data.get("consumers", 0) > 0
+            return False
+    except Exception:
+        return False
+
 @app.get("/", dependencies=[Depends(rate_limit_info)])
-def info():
+async def info():
+    try:
+        broker_ok = await broker.ping(timeout=5.0)
+        redis = get_redis()
+        redis_ok = await redis.ping()
+        worker_online = await check_worker_via_api()
+
+        return {
+            "app": config.app.name,
+            "env": config.app.env,
+            "status": "ok",
+            "broker_ping": broker_ok,
+            "redis_ping": redis_ok,
+            "worker_online": worker_online
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}, 500
+
     return {
         "app": config.app.name,
         "env": config.app.env,
