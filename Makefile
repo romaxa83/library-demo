@@ -1,6 +1,7 @@
 .SILENT:
 
-include .env
+# Дефис перед include указывает make игнорировать отсутствие файла и продолжать работу без ошибок
+-include .env
 
 #======================================
 # Information on commands, called by the "make" command
@@ -15,6 +16,50 @@ help:  ## отображение данного сообщения help
 
 .PHONY: up
 up: docker_up ## составная команда, для поднятия проекта [docker_up -> start_app]
+
+.PHONY: init_app
+init_app: build generate_key storage_link seed_data up info ## разворачиваем проект, запускается один раз
+
+.PHONY: seed_data ## загрузить данные
+seed_data:
+	docker exec -it ${APP_NAME}__app python -m cli.main seed perms
+	docker exec -it ${APP_NAME}__app python -m cli.main seed superadmin
+	docker exec -it ${APP_NAME}__app python -m cli.main seed books
+
+.PHONY: info ## информация
+info:
+	echo '----------------------------------------------------------------------------------------------------------------------------------------';
+	printf "\\033[36m[x] LOCAL\\033[0m\\n";
+	echo ${APP_URL};
+	echo ${APP_URL}/docs;
+	echo Email - ${APP_URL}:8025;
+	echo RabbitMQ - ${APP_URL}:15672;
+	echo Prometheus - ${APP_URL}:9090;
+	echo Grafana - ${APP_URL}:3000;
+	echo '----------------------------------------------------------------------------------------------------------------------------------------';
+
+#======================================
+# Copy file
+.PHONY: cp_file
+cp_file: cp_env ## создает файл .env, .env.testing, docker-compose.yml [по дефолту заточено под linux, если mac, то вызываем - make cp_file os=mac]
+ifeq ($(os),mac)
+	$(MAKE) cp_docker_compose_mac
+else
+	$(MAKE) cp_docker_compose_linux
+endif
+
+.PHONY: cp_env
+cp_env:
+	cp -n .env.dist .env && echo "✅ copy .env from .env.dist" || echo "⚠️  .env already exists"
+	cp -n .env.testing.dist .env.testing && echo "✅ copy .env.testing from .env.testing.dist" || echo "⚠️  .env.testing already exists"
+
+.PHONY: cp_docker_compose_mac
+cp_docker_compose_mac:
+	cp -n infrastructures/docker/docker-compose-mac.yaml.dist docker-compose.yaml && echo "✅ copy docker-compose.yaml" || echo "⚠️  docker-compose.yaml already exists"
+
+.PHONY: cp_docker_compose_linux
+cp_docker_compose_linux:
+	cp -n infrastructures/docker/docker-compose-linux.yaml.dist docker-compose.yaml && echo "✅ copy docker-compose.yaml" || echo "⚠️  docker-compose.yaml already exists"
 
 ##======================================
 # Command
@@ -55,9 +100,20 @@ queue_docs: ## запускаем сервер с документацией о�
 app_structure: ## Выведет структуру проекта
 	python -m cli.main structure show
 
+##======================================
+# Docker command
+
 .PHONY: docker_up
-docker_up: ## подымает контейнеры
-	docker-compose up --build -d
+docker_up: ## подымает контейнеры (если нужно выводить логи пере)
+ifeq ($(log),true)
+	docker-compose up
+else
+	docker-compose up -d
+endif
+
+#.PHONY: docker_up
+#docker_up: ## подымает контейнеры ()
+#	docker-compose up --build -d
 
 .PHONY: down
 down: ## останавливает контейнеры и удаляет их образы
@@ -66,6 +122,7 @@ down: ## останавливает контейнеры и удаляет их 
 .PHONY: build
 build: ## собирает контейнеры
 	docker-compose build
+	echo "✅ Контейнеры собраны"
 
 .PHONY: rebuild
 rebuild: down build up ## составная команда, для перезапуска контейнера [down -> build -> up]

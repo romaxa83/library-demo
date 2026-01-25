@@ -15,6 +15,7 @@ class AppConfig(BaseSettings):
     name: str = "App"
     env: str = "dev"
     url: str = "https://localhost"
+    port: str = "80"
     superadmin_email: str = "admin@gmail.com"
     superadmin_password: str = "password12"
 

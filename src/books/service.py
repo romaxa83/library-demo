@@ -264,7 +264,7 @@ class BookService:
         await self.session.commit()
 
     async def import_json_to_db(self, file_path: str) -> None:
-        print(file_path)
+        # print(file_path)
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
@@ -280,7 +280,7 @@ class BookService:
             for item in entry.get("titles", []):
                 book_title = item.get("name")
                 book = await self.find_by_title(book_title)
-                print(book_title)
+                # print(book_title)
                 if book is None:
                     await self.create(
                         BookCreate(

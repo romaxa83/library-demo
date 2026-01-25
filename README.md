@@ -48,11 +48,29 @@
 *   [RabbitMQ](https://www.postgresql.org/)
 *   [Docker](https://www.docker.com/)
 
-## ⚙️ Запуск приложения
+## ⚙️ Разворачивание и запуск приложения
 
-
+используется утилита make
 ```bash
-# запуск проекта
+# копируем файл (создаст файлы: .env, .env.testing, docker-compose.yaml)
+# for linux
+make cp_file
+#for mac
+make cp_file os=mac
+
+# Разворачиваем проект
+make init_app
+
+# Подымаем проект
+make up
+
+# Останавливаем проект
+make down
+
+# Список все команд
+make
+
+# запуск проекта (нативно)
 python3 -m src.main
 ```
 

@@ -69,7 +69,7 @@ async def superadmin():
             user = await db.scalar(stmt_user)
 
             if user:
-                print("ℹ️  Superadmin already exists")
+                print("⚠️ Superadmin already exists")
                 return
 
             # Создаем модель
@@ -85,7 +85,7 @@ async def superadmin():
             db.add(model)
             await db.commit()
 
-            print("✅ Создан супер-админ")
+            print(f"✅ Создан супер-админ - (email:{config.app.superadmin_email}, password:{config.app.superadmin_password})")
 
         except Exception as e:
             print(f"❌ Ошибка: {e}")

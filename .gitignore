@@ -34,6 +34,8 @@ wheels/
 .env.development
 .env.production
 
+docker-compose.yaml
+
 # IDE
 .vscode/
 .idea/
