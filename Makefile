@@ -18,7 +18,7 @@ help:  ## отображение данного сообщения help
 up: docker_up ## составная команда, для поднятия проекта [docker_up -> start_app]
 
 .PHONY: init_app
-init_app: build generate_key storage_link up migration_run seed_data ps info ## разворачиваем проект, запускается один раз
+init_app: build generate_key storage_link permissions up migration_run seed_data ps info ## разворачиваем проект, запускается один раз
 
 .PHONY: seed_data ## загрузить данные
 seed_data:
@@ -64,9 +64,10 @@ cp_docker_compose_linux:
 ##======================================
 # Command
 
-#.PHONY: build
-#build: ## собирает контейнеры
-#	docker compose build --build-arg USER_ID=${UID} --build-arg GROUP_ID=${GID}
+.PHONY: permissions
+permissions: ## даем права папкам
+	sudo chmod 777 -R -f logs
+	sudo chmod 777 -R -f storage
 
 .PHONY: storage_link
 storage_link: ## создание символьной ссылки: public/media -> storage/media

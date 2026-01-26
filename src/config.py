@@ -29,11 +29,11 @@ class LoggerLoguruConfig(BaseSettings):
     )
     # значение по умолчанию
     path: str = "logs/app/app.log" # файл для записей логов
-    level: str = "INFO"        # уровень логирования
-    rotation: str = "10 MB"    # ротация файла при достижении предела, 10MB
-    retention: str = "1 month" # как долго хранятся старые логи
-    compression: str = "zip"   # архивирование старых логов
-    serialize: bool = True     # форматировать ли в JSON-формат
+    level: str = "INFO"            # уровень логирования
+    rotation: str = "10 MB"        # ротация файла при достижении предела, 10MB
+    retention: str = "1 month"     # как долго хранятся старые логи
+    compression: str = "zip"       # архивирование старых логов
+    serialize: bool = True         # форматировать ли в JSON-формат
 
 class AuthJWTConfig(BaseSettings):
     model_config = SettingsConfigDict(
@@ -42,9 +42,9 @@ class AuthJWTConfig(BaseSettings):
     # значение по умолчанию
     private_key_path: Path = BASE_DIR / "jwt-private.pem" # путь к приватному ключу
     public_key_path: Path = BASE_DIR / "jwt-public.pem"   # путь к публичному ключу
-    algorithm: str = "RS256"   # алгоритм шифрования
-    access_token_expired: int = 10   # время жизни токена
-    refresh_token_expired: int = 60*24*7   # время жизни токена
+    algorithm: str = "RS256"                 # алгоритм шифрования
+    access_token_expired: int = 10           # время жизни токена
+    refresh_token_expired: int = 60*24*7     # время жизни токена
     reset_password_token_expired: int = 60   # время жизни токена
 
 class EmailConfig(BaseSettings):
