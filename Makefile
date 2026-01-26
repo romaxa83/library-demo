@@ -18,7 +18,7 @@ help:  ## отображение данного сообщения help
 up: docker_up ## составная команда, для поднятия проекта [docker_up -> start_app]
 
 .PHONY: init_app
-init_app: build generate_key storage_link seed_data up info ## разворачиваем проект, запускается один раз
+init_app: build generate_key storage_link up migration_run seed_data ps info ## разворачиваем проект, запускается один раз
 
 .PHONY: seed_data ## загрузить данные
 seed_data:
@@ -99,6 +99,11 @@ queue_docs: ## запускаем сервер с документацией о�
 .PHONY: app_structure
 app_structure: ## Выведет структуру проекта
 	python -m cli.main structure show
+
+.PHONY: migration_run
+migration_run: ## Запуск миграций
+	echo "✅ Запуск миграций"
+	docker exec -it ${APP_NAME}__app alembic upgrade head
 
 ##======================================
 # Docker command
