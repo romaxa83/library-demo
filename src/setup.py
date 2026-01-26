@@ -38,4 +38,4 @@ def setup_app_mounts(app: FastAPI):
 
 def setup_monitoring(app: FastAPI):
     """Настройка Prometheus"""
-    Instrumentator().instrument(app).expose(app, endpoint='/__internal_metrics__')
+    Instrumentator().instrument(app).expose(app, endpoint='/__internal_metrics__', include_in_schema=False)

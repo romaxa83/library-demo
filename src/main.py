@@ -96,7 +96,7 @@ async def check_worker_via_api() -> bool:
     except Exception:
         return False
 
-@app.get("/", dependencies=[Depends(rate_limit_info)])
+@app.get("/", include_in_schema=False, dependencies=[Depends(rate_limit_info)])
 async def info():
     try:
         broker_ok = await broker.ping(timeout=5.0)
@@ -115,21 +115,7 @@ async def info():
     except Exception as e:
         return {"status": "error", "message": str(e)}, 500
 
-    return {
-        "app": config.app.name,
-        "env": config.app.env,
-        "version": "1.0",
-        "request_simple_stats": {
-            path: {
-                "count": stats.count,
-                "statuses": dict(stats.statuses_counts),
-            }
-            for path, stats in requests_count_middleware_dispatch.counts.items()
-        }
-
-    }
-
-@app.get("/health", dependencies=[Depends(rate_limit_health)])
+@app.get("/health", include_in_schema=False, dependencies=[Depends(rate_limit_health)])
 async def health_check():
     try:
         broker_ok = await broker.ping(timeout=5.0)
@@ -144,7 +130,7 @@ async def health_check():
     except Exception as e:
         return {"status": "error", "message": str(e)}, 500
 
-@app.get("/stop")
+@app.get("/stop", include_in_schema=False)
 def stop_server():
     print("Получен запрос на остановку сервера. Завершаем...")
     os.kill(os.getpid(), signal.SIGTERM)
