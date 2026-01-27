@@ -1,0 +1,57 @@
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - /app/logs/*.log  # Путь к логам внутри контейнера
+    fields:
+      log_type: app
+      source: fastapi
+      env: ${ENVIRONMENT}
+    json.keys_under_root: true
+    json.add_error_key: true
+
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/access.log
+    fields:
+      log_type: nginx
+      log_level: INFO
+      source: nginx
+      env: ${ENVIRONMENT}
+    multiline.pattern: '^\d{4}/\d{2}/\d{2}'  # Для объединения stacktrace (если нужно)
+    multiline.negate: true
+    multiline.match: after
+
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/error.log
+    fields:
+      log_type: nginx
+      log_level: ERROR
+      source: nginx
+      env: ${ENVIRONMENT}
+    multiline.pattern: '^\d{4}/\d{2}/\d{2}'  # Для объединения stacktrace (если нужно)
+    multiline.negate: true
+    multiline.match: after
+
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/postgresql/*.json
+    fields:
+      log_type: postgresql
+      source: postgresql
+      env: ${ENVIRONMENT}
+    json.keys_under_root: true
+    json.add_error_key: true
+
+# Нужно, чтобы не обрабатывать файлы повторно при перезапусках
+filebeat.registry.path: /usr/share/filebeat/data
+
+output.logstash:  # Отправляет обработанные логи в Logstash.
+  hosts: ["logstash:5044"]
+
+setup.kibana:  # Позволяет Filebeat автоматически: настроить индексы в Elasticsearch, загрузить дашборды в Kibana
+  host: "kibana:5601"
