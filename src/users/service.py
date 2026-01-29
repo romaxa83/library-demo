@@ -1,3 +1,4 @@
+from pydantic import EmailStr
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +21,7 @@ class UserService:
 
         return model
 
-    async def find_by_email(self, email: str) -> User | None:
+    async def find_by_email(self, email: str|EmailStr) -> User | None:
         stmt = select(User).where(User.email == email)
         model = await self.session.scalar(stmt)
 
